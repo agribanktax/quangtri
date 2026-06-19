@@ -60,6 +60,11 @@
             </select>
         </div>
 
+        <div class="filter-item">
+            <label>Tìm theo Họ tên Khách hàng:</label>
+            <input type="text" id="searchName" placeholder="Nhập họ tên cần tìm...">
+        </div>
+
         <button onclick="searchData()" class="btn-search">Tìm kiếm</button>
     </div>
 
@@ -69,14 +74,18 @@
                 <tr>
                     <th>Mã số thuế</th>
                     <th>Họ và Tên</th>
+                    <th>Số CCCD</th>
                     <th>Thôn Tổ</th>
                     <th>Phường Xã</th>
-                    <th>Mã Địa bàn)</th>
-                    <th>Số tiền cần nộp</th>
+                    <th>Số tiền thu thuế</th>
+                    <th>Tổng tiền thanh toán</th>
                     <th>Trạng thái</th>
+                    <th>Hành động</th>
                 </tr>
             </thead>
-            <tbody id="taxTableBody"></tbody>
+            <tbody id="taxTableBody">
+                <tr><td colspan="9" style="text-align:center; color: #64748b;">Vui lòng bấm nút "Tìm kiếm" để tải dữ liệu</td></tr>
+            </tbody>
         </table>
     </div>
 
@@ -95,9 +104,13 @@
             <img id="qrImage" class="qr-img" src="" alt="Mã QR Chuyển Khoản">
         </div>
         
-        <div class="confirm-zone" onclick="toggleCheckbox()">
-            <input type="checkbox" id="chkPaymentConfirm" onclick="event.stopPropagation(); verifyAndPay()">
-            <label for="chkPaymentConfirm">Xác nhận đã chuyển khoản thành công</label>
+        <div class="status-toggle-zone">
+            <span>Trạng thái thanh toán:</span>
+            <label class="switch">
+                <input type="checkbox" id="switchPaymentStatus" onchange="verifyAndPayChange(this)">
+                <span class="slider round"></span>
+            </label>
+            <span id="toggleStatusLabel" style="font-weight: bold; margin-left: 5px;">OFF</span>
         </div>
 
         <button onclick="closePopup()" class="btn-popup-close">Quay trở lại (Cancel)</button>
