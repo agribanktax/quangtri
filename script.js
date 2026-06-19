@@ -18,11 +18,13 @@ const db = firebase.database();
 let allData = [];
 let filteredData = []; 
 let currentSelectedCustomerId = null; 
+let isUpdatingToggle = false; // Ngăn chặn trigger lặp vòng khi set checked bằng code
 
 let currentUser = JSON.parse(sessionStorage.getItem('customUser')) || null;
 
 let currentPage = 1;
 const rowsPerPage = 10;
+let hasSearched = false; // Yêu cầu 2: Ban đầu chưa bấm tìm kiếm thì chưa load dữ liệu
 
 window.onload = function() {
     checkLoginStatus();
@@ -89,14 +91,18 @@ function fetchTaxData() {
                     let item = data[id];
                     if (!item.ID) item.ID = id; 
                     
-                    if (item.Branch === currentUser.Branch) {
+                    if (item.BranchCode === currentUser.Branch || item.Branch === currentUser.Branch) {
                         allData.push(item);
                     }
                 }
                 allData.sort((a, b) => new Date(b.InsertTime) - new Date(a.InsertTime));
             }
             initComboboxes();
-            searchData(); 
+            
+            // Nếu đã bấm Tìm kiếm trước đó thì cập nhật lại bảng theo Realtime
+            if (hasSearched) {
+                searchData(true); 
+            }
         } catch (error) {
             console.error(error);
         }
@@ -131,10 +137,15 @@ function updateThonToCombobox() {
     if(uniqueThonTo.includes(currentTt)) thonToSelect.value = currentTt;
 }
 
-function searchData() {
+function searchData(isRealtimeUpdate = false) {
+    if(!isRealtimeUpdate) {
+        hasSearched = true; // Xác nhận người dùng đã chủ động bấm nút Tìm kiếm
+    }
+
     const pxValue = document.getElementById('filterPhuongXa').value;
     const ttValue = document.getElementById('filterThonTo').value;
     const statusValue = document.getElementById('filterTrangThai').value; 
+    const nameValue = document.getElementById('searchName').value.trim().toLowerCase(); // Yêu cầu 1: Tìm theo tên
 
     filteredData = allData;
 
@@ -144,12 +155,21 @@ function searchData() {
     if (statusValue !== "") {
         const isPaid = statusValue === "true";
         filteredData = filteredData.filter(item => {
-            const itemStatus = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1;
+            const itemStatus = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1 || item.DaThanhToan === "1";
             return itemStatus === isPaid;
         });
     }
 
-    currentPage = 1; 
+    if (nameValue) {
+        filteredData = filteredData.filter(item => {
+            const fullName = `${item.Ho || ''} ${item.Ten || ''}`.toLowerCase();
+            return fullName.includes(nameValue) || removeVietnameseTones(fullName).includes(removeVietnameseTones(nameValue));
+        });
+    }
+
+    if(!isRealtimeUpdate) {
+        currentPage = 1; 
+    }
     renderTable();
 }
 
@@ -157,8 +177,14 @@ function renderTable() {
     const tbody = document.getElementById('taxTableBody');
     tbody.innerHTML = "";
 
+    if (!hasSearched) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: #64748b;">Vui lòng bấm nút "Tìm kiếm" để tải dữ liệu</td></tr>`;
+        updatePaginationControls(0);
+        return;
+    }
+
     if (!filteredData || filteredData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Không tìm thấy dữ liệu phù hợp với địa bàn của bạn</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Không tìm thấy dữ liệu phù hợp với địa bàn của bạn</td></tr>`;
         updatePaginationControls(0);
         return;
     }
@@ -167,23 +193,66 @@ function renderTable() {
     const endIndex = startIndex + rowsPerPage;
     const pageData = filteredData.slice(startIndex, endIndex);
 
+    // Tính tổng tiền theo IDSUM toàn cục hoặc cục bộ để hiển thị chính xác
+    let idsumTotals = {};
+    allData.forEach(item => {
+        if(item.IDSUM) {
+            const amt = Number(item.SoTienThuThue) || 0;
+            idsumTotals[item.IDSUM] = (idsumTotals[item.IDSUM] || 0) + amt;
+        }
+    });
+
+    // Thuật toán đếm số lần xuất hiện của IDSUM trong trang hiện tại để tạo Merge (rowspan)
+    let idsumCountsInPage = {};
+    let idsumRendered = {};
+
+    pageData.forEach(item => {
+        if (item.IDSUM) {
+            idsumCountsInPage[item.IDSUM] = (idsumCountsInPage[item.IDSUM] || 0) + 1;
+        }
+    });
+
     pageData.forEach(item => {
         const tr = document.createElement('tr');
-        tr.onclick = () => handleRowClick(item);
-
-        const statusText = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1
+        
+        const isPaid = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1 || item.DaThanhToan === "1";
+        const statusText = isPaid
             ? "<b style='color:#10b981;'>Đã thanh toán</b>" 
             : "<b style='color:#ef4444;'>Chưa thanh toán</b>";
         
-        tr.innerHTML = `
-            <td>${item.MaSoThue || ''}</td>
-            <td>${item.Ho || ''} ${item.Ten || ''}</td>
-            <td>${item.ThonTo || ''}</td>
-            <td>${item.PhuongXa || ''}</td>
-            <td><span style="background: #e0e7ff; color: #4338ca; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size:12px;">${item.Branch || 'N/A'}</span></td>
-            <td>${item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0} đ</td>
-            <td>${statusText}</td>
-        `;
+        // Cột 1: Mã số thuế
+        tr.innerHTML += `<td>${item.MaSoThue || ''}</td>`;
+        
+        // Yêu cầu 3: Gộp ô (Merge) Họ và tên có cùng IDSUM
+        if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
+            if (!idsumRendered[item.IDSUM]) {
+                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; background-color: #fdfdfd; font-weight: 600;">${item.Ho || ''} ${item.Ten || ''}</td>`;
+            }
+        } else {
+            tr.innerHTML += `<td>${item.Ho || ''} ${item.Ten || ''}</td>`;
+        }
+
+        // Cột hiển thị mới bổ sung từ DB SQL
+        tr.innerHTML += `<td>${item.CCCD || ''}</td>`;
+        tr.innerHTML += `<td>${item.ThonTo || ''}</td>`;
+        tr.innerHTML += `<td>${item.PhuongXa || ''}</td>`;
+        tr.innerHTML += `<td>${item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0} đ</td>`;
+
+        // Yêu cầu 3: Thêm một cột tổng tiền ở cuối dòng (Gộp nhóm theo IDSUM)
+        const totalGroupAmount = idsumTotals[item.IDSUM] || Number(item.SoTienThuThue) || 0;
+        if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
+            if (!idsumRendered[item.IDSUM]) {
+                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; background-color: #f8fafc; font-weight: bold; color: #1e3a8a;">${totalGroupAmount.toLocaleString('vi-VN')} đ</td>`;
+                idsumRendered[item.IDSUM] = true; // Đánh dấu đã render ô gộp
+            }
+        } else {
+            tr.innerHTML += `<td style="font-weight: bold; color: #1e3a8a;">${totalGroupAmount.toLocaleString('vi-VN')} đ</td>`;
+        }
+
+        // Trạng thái và nút Hành động tạo QR
+        tr.innerHTML += `<td>${statusText}</td>`;
+        tr.innerHTML += `<td><button class="btn-table-qr" onclick="openQrPopup('${item.ID}')">⚙ Quét QR Thanh toán</button></td>`;
+        
         tbody.appendChild(tr);
     });
 
@@ -212,53 +281,67 @@ function nextPage() {
     }
 }
 
-function handleRowClick(item) {
-    if (item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1) {
-        alert(`Khách hàng ${item.Ho} ${item.Ten} đã thanh toán.`);
-        return;
-    }
+// Yêu cầu 4, 5 & 7: Cho phép mở QR kể cả khi đã hoặc chưa thanh toán
+function openQrPopup(id) {
+    const item = allData.find(x => x.ID === id);
+    if (!item) return;
 
-    currentSelectedCustomerId = item.ID;
-    document.getElementById('chkPaymentConfirm').checked = false;
+    currentSelectedCustomerId = id;
+    
+    // Đồng bộ trạng thái vào nút gạt ON-OFF
+    const isPaid = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1 || item.DaThanhToan === "1";
+    
+    isUpdatingToggle = true; 
+    document.getElementById('switchPaymentStatus').checked = isPaid;
+    document.getElementById('toggleStatusLabel').innerText = isPaid ? "ON (Đã Đóng)" : "OFF (Chưa Đóng)";
+    document.getElementById('toggleStatusLabel').style.color = isPaid ? "#10b981" : "#ef4444";
+    isUpdatingToggle = false;
 
-    const rawPurpose = `${item.IDSUM || ''} ${item.Ho || ''} ${item.Ten || ''} ${item.MaSoThue || ''}`;
+    // Yêu cầu 5: Nội dung chuyển khoản: "IDSUM + Số CCCD + thue dat" (Không dấu)
+    const rawPurpose = `${item.IDSUM || ''} ${item.CCCD || ''} thue dat`;
     const purpose = removeVietnameseTones(rawPurpose);
 
     const qrUrl = `https://img.vietqr.io/image/${BANK_BIN}-${BANK_ACCOUNT}-qr_only.png?amount=${item.SoTienThuThue}&addInfo=${encodeURIComponent(purpose)}`;
 
+    // Hiển thị CCCD, Họ tên, số tiền lên thông tin
     document.getElementById('qrInfo').innerHTML = `
-        <b>Khách hàng:</b> ${item.Ho || ''} ${item.Ten || ''}<br>
-        <b>Số tiền:</b> ${item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0} đ<br>
-        <b>Nội dung:</b> ${purpose}
+        <b>Họ và tên:</b> ${item.Ho || ''} ${item.Ten || ''}<br>
+        <b>Số CCCD:</b> ${item.CCCD || ''}<br>
+        <b>Mã Số Thuế:</b> ${item.MaSoThue || ''}<br>
+        <b>Số tiền dòng này:</b> ${item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0} đ<br>
+        <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
     `;
     document.getElementById('qrImage').src = qrUrl;
     document.getElementById('qrPopup').classList.remove('hidden');
 }
 
-function verifyAndPay() {
-    const isChecked = document.getElementById('chkPaymentConfirm').checked;
-    
-    if (isChecked && currentSelectedCustomerId) {
-        if(confirm("Bạn có chắc chắn muốn xác nhận khách hàng này ĐÃ THANH TOÁN?")) {
-            db.ref('QRCodeTax/' + currentSelectedCustomerId).update({
-                DaThanhToan: true
-            }).then(() => {
-                alert("Cập nhật trạng thái thanh toán thành công!");
-                closePopup(); 
-            }).catch((error) => {
-                alert("Lỗi cập nhật dữ liệu: " + error.message);
-                document.getElementById('chkPaymentConfirm').checked = false; 
-            });
-        } else {
-            document.getElementById('chkPaymentConfirm').checked = false; 
-        }
-    }
-}
+// Yêu cầu 6 & 7: Khi thay đổi nút gạt ON/OFF sẽ cập nhật trực tiếp lên Firebase
+function verifyAndPayChange(toggleElement) {
+    if (isUpdatingToggle || !currentSelectedCustomerId) return;
 
-function toggleCheckbox() {
-    const checkbox = document.getElementById('chkPaymentConfirm');
-    checkbox.checked = !checkbox.checked;
-    verifyAndPay();
+    const isChecked = toggleElement.checked;
+    const statusMsg = isChecked ? "ĐÃ THANH TOÁN" : "CHƯA THANH TOÁN";
+    
+    if(confirm(`Bạn muốn chuyển trạng thái khách hàng này thành: ${statusMsg}?`)) {
+        db.ref('QRCodeTax/' + currentSelectedCustomerId).update({
+            DaThanhToan: isChecked
+        }).then(() => {
+            document.getElementById('toggleStatusLabel').innerText = isChecked ? "ON (Đã Đóng)" : "OFF (Chưa Đóng)";
+            document.getElementById('toggleStatusLabel').style.color = isChecked ? "#10b981" : "#ef4444";
+            alert("Cập nhật trạng thái thành công!");
+        }).catch((error) => {
+            alert("Lỗi cập nhật dữ liệu: " + error.message);
+            // Quay ngược lại nếu lỗi
+            isUpdatingToggle = true;
+            toggleElement.checked = !isChecked;
+            isUpdatingToggle = false;
+        });
+    } else {
+        // Quay ngược lại trạng thái cũ nếu huỷ bỏ confirm
+        isUpdatingToggle = true;
+        toggleElement.checked = !isChecked;
+        isUpdatingToggle = false;
+    }
 }
 
 function closePopup() {
