@@ -17,7 +17,7 @@ const db = firebase.database();
 
 let allData = [];
 let filteredData = []; 
-let currentSelectedIdSum = null; // Thay đổi: Lưu IDSUM được chọn thay vì ID đơn lẻ
+let currentSelectedIdSum = null; 
 let isUpdatingToggle = false; 
 
 let currentUser = JSON.parse(sessionStorage.getItem('customUser')) || null;
@@ -95,7 +95,16 @@ function fetchTaxData() {
                         allData.push(item);
                     }
                 }
-                allData.sort((a, b) => new Date(b.InsertTime) - new Date(a.InsertTime));
+                // Sắp xếp ưu tiên gom các dòng có chung IDSUM lại gần nhau để hiển thị gộp ô đẹp mắt
+                allData.sort((a, b) => {
+                    if (a.IDSUM && b.IDSUM) {
+                        if (a.IDSUM === b.IDSUM) {
+                            return new Date(b.InsertTime) - new Date(a.InsertTime);
+                        }
+                        return a.IDSUM.localeCompare(b.IDSUM);
+                    }
+                    return new Date(b.InsertTime) - new Date(a.InsertTime);
+                });
             }
             initComboboxes();
             
@@ -131,7 +140,7 @@ function updateThonToCombobox() {
 
     thonToSelect.innerHTML = '<option value="">-- Tất cả Thôn/Tổ --</option>';
     uniqueThonTo.forEach(tt => {
-        thonToSelect.innerHTML += `<option value="${tt}">${tt}</option>`;
+        thonToSelect.innerHTML += `<option value="${tt}">${tt}</option>';
     });
     if(uniqueThonTo.includes(currentTt)) thonToSelect.value = currentTt;
 }
@@ -180,22 +189,18 @@ function renderTable() {
     tbody.innerHTML = "";
 
     if (!hasSearched) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: #64748b;">Vui lòng bấm nút "Tìm kiếm" để tải dữ liệu</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: #64748b; padding: 20px;">Vui lòng nhập điều kiện lọc và bấm nút "Tìm kiếm" để tải dữ liệu</td></tr>`;
         updatePaginationControls(0);
         return;
     }
 
     if (!filteredData || filteredData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Không tìm thấy dữ liệu phù hợp với địa bàn của bạn</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 20px;">Không tìm thấy dữ liệu phù hợp với địa bàn của bạn</td></tr>`;
         updatePaginationControls(0);
         return;
     }
 
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    const pageData = filteredData.slice(startIndex, endIndex);
-
-    // Tính tổng tiền theo IDSUM toàn cục
+    // 1. Tính tổng tiền tích lũy theo IDSUM toàn cục
     let idsumTotals = {};
     allData.forEach(item => {
         if(item.IDSUM) {
@@ -204,18 +209,25 @@ function renderTable() {
         }
     });
 
-    // Đếm số lượng IDSUM trong trang hiện tại để thực hiện Rowspan gộp ô hiển thị
-    let idsumCountsInPage = {};
-    let idsumRenderedName = {};
-    let idsumRenderedTotal = {};
-    let idsumRenderedAction = {};
+    // 2. Phân trang dữ liệu hiển thị
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    const pageData = filteredData.slice(startIndex, endIndex);
 
+    // 3. THUẬT TOÁN ĐẾM ROWSPAN CHÍNH XÁC TRÊN TRANG HIỆN TẠI
+    let idsumCountsInPage = {};
     pageData.forEach(item => {
         if (item.IDSUM) {
             idsumCountsInPage[item.IDSUM] = (idsumCountsInPage[item.IDSUM] || 0) + 1;
         }
     });
 
+    // Các biến cờ đánh dấu trạng thái đã render ô gộp của từng nhóm IDSUM trên trang hiện tại
+    let idsumRenderedName = {};
+    let idsumRenderedTotal = {};
+    let idsumRenderedAction = {};
+
+    // 4. TIẾN HÀNH DỰNG CÁC DÒNG (TR) TRÊN BẢNG DỮ LIỆU
     pageData.forEach(item => {
         const tr = document.createElement('tr');
         
@@ -227,47 +239,49 @@ function renderTable() {
         // Cột 1: Mã số thuế
         tr.innerHTML += `<td>${item.MaSoThue || ''}</td>`;
         
-        // Cột 2: Họ và tên (Gộp ô nếu chung IDSUM)
+        // Cột 2: Họ và tên (Gộp ô nếu có chung IDSUM)
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedName[item.IDSUM]) {
-                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; background-color: #fdfdfd; font-weight: 600;">${item.Ho || ''} ${item.Ten || ''}</td>`;
+                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; background-color: #ffffff; font-weight: 600;">${item.Ho || ''} ${item.Ten || ''}</td>`;
                 idsumRenderedName[item.IDSUM] = true;
             }
         } else {
             tr.innerHTML += `<td>${item.Ho || ''} ${item.Ten || ''}</td>`;
         }
 
+        // Cột 3, 4, 5, 6: Thông tin chi tiết hóa đơn lẻ
         tr.innerHTML += `<td>${item.CCCD || ''}</td>`;
         tr.innerHTML += `<td>${item.ThonTo || ''}</td>`;
         tr.innerHTML += `<td>${item.PhuongXa || ''}</td>`;
         tr.innerHTML += `<td>${item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0} đ</td>`;
 
-        // Cột 7: Tổng tiền thanh toán (Gộp ô nhóm theo IDSUM)
+        // Cột 7: Tổng tiền thanh toán nhóm (Gộp ô theo IDSUM)
         const totalGroupAmount = idsumTotals[item.IDSUM] || Number(item.SoTienThuThue) || 0;
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedTotal[item.IDSUM]) {
-                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; background-color: #f8fafc; font-weight: bold; color: #1e3a8a;">${totalGroupAmount.toLocaleString('vi-VN')} đ</td>`;
+                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; background-color: #f8fafc; font-weight: bold; color: #1e3a8a; text-align: right;">${totalGroupAmount.toLocaleString('vi-VN')} đ</td>`;
                 idsumRenderedTotal[item.IDSUM] = true;
             }
         } else {
-            tr.innerHTML += `<td style="font-weight: bold; color: #1e3a8a;">${totalGroupAmount.toLocaleString('vi-VN')} đ</td>`;
+            tr.innerHTML += `<td style="font-weight: bold; color: #1e3a8a; text-align: right;">${totalGroupAmount.toLocaleString('vi-VN')} đ</td>`;
         }
 
-        // Cột 8: Trạng thái dòng đơn lẻ
+        // Cột 8: Trạng thái đóng thuế của dòng đơn lẻ
         tr.innerHTML += `<td>${statusText}</td>`;
         
-        // Cột 9: Hành động - SỬA ĐỔI: Gộp nút quét QR thanh toán theo IDSUM chung
+        // Cột 9: Hành động (GỘP CHUNG MÃ QR ĐỂ THANH TOÁN 1 LẦN CHO CÁC DÒNG CÓ CÙNG IDSUM)
+        const targetIdSum = item.IDSUM || item.ID;
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedAction[item.IDSUM]) {
-                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; text-align: center; background-color: #fdfdfd;">
-                    <button class="btn-table-qr" onclick="openQrPopupByIdSum('${item.IDSUM}')">⚙ Quét QR Tổng</button>
+                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; text-align: center; background-color: #ffffff;">
+                    <button class="btn-table-qr" onclick="openQrPopupByIdSum('${targetIdSum}')">⚙ Quét QR Tổng</button>
                 </td>`;
-                idsumRenderedAction[item.IDSUM] = true;
+                idsumRenderedAction[item.IDSUM] = true; // Đánh dấu đã dựng nút chung thành công
             }
-        } else {
-            // Trường hợp IDSUM chỉ xuất hiện 1 dòng đơn lẻ
+        } else if (!item.IDSUM || idsumCountsInPage[item.IDSUM] <= 1) {
+            // Trường hợp khách hàng chỉ có duy nhất một hóa đơn lẻ
             tr.innerHTML += `<td style="text-align: center;">
-                <button class="btn-table-qr" onclick="openQrPopupByIdSum('${item.IDSUM || item.ID}')">⚙ Quét QR</button>
+                <button class="btn-table-qr" onclick="openQrPopupByIdSum('${targetIdSum}')">⚙ Quét QR</button>
             </td>`;
         }
         
@@ -299,19 +313,18 @@ function nextPage() {
     }
 }
 
-// SỬA ĐỔI MỚI: Mở QR Popup dựa trên IDSUM nhóm để tính tổng tiền chung
+// Mở QR Popup dựa trên IDSUM nhóm để thanh toán tổng tiền toàn bộ các bản ghi
 function openQrPopupByIdSum(idsum) {
     if (!idsum) return;
 
-    // Lọc ra toàn bộ danh sách các dòng có chung IDSUM này
+    // Truy vết và lọc ra tất cả các hóa đơn của khách hàng có chung IDSUM này
     const groupRecords = allData.filter(x => x.IDSUM === idsum || x.ID === idsum);
     if (groupRecords.length === 0) return;
 
-    // Lấy thông tin đại diện từ dòng đầu tiên để hiển thị thông tin tĩnh
     const baseItem = groupRecords[0];
     currentSelectedIdSum = idsum; 
 
-    // Kiểm tra trạng thái chung: Nếu TẤT CẢ các dòng trong nhóm đều đã đóng thì nút gạt là ON, ngược lại là OFF
+    // Đồng bộ trạng thái vào nút gạt ON-OFF: Nút gạt bật (ON) khi và chỉ khi TẤT CẢ các dòng đều đã thanh toán
     const isAllPaid = groupRecords.every(item => item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1 || item.DaThanhToan === "1");
 
     isUpdatingToggle = true; 
@@ -320,47 +333,46 @@ function openQrPopupByIdSum(idsum) {
     document.getElementById('toggleStatusLabel').style.color = isAllPaid ? "#10b981" : "#ef4444";
     isUpdatingToggle = false;
 
-    // Tính tổng số tiền thực tế của toàn bộ các hóa đơn thuộc IDSUM này để gán vào QR
+    // Tính tổng số tiền thu thuế thực tế của toàn bộ các bản ghi có chung IDSUM này
     let totalAmount = 0;
     groupRecords.forEach(r => {
         totalAmount += (Number(r.SoTienThuThue) || 0);
     });
 
-    // Nội dung chuyển khoản theo chuẩn: "IDSUM + Số CCCD + thue dat"
+    // Nội dung chuyển khoản theo chuẩn: "IDSUM + Số CCCD + thue dat" (Chuỗi không dấu)
     const rawPurpose = `${baseItem.IDSUM || ''} ${baseItem.CCCD || ''} thue dat`;
     const purpose = removeVietnameseTones(rawPurpose);
 
-    // Tạo liên kết VietQR tự động điền Tổng Số Tiền của cả nhóm hóa đơn
+    // Tạo liên kết VietQR điền sẵn tổng tiền gộp thanh toán một lần
     const qrUrl = `https://img.vietqr.io/image/${BANK_BIN}-${BANK_ACCOUNT}-qr_only.png?amount=${totalAmount}&addInfo=${encodeURIComponent(purpose)}`;
 
-    // Cập nhật giao diện Popup
+    // Đổ dữ liệu chi tiết lên giao diện Popup
     document.getElementById('qrInfo').innerHTML = `
         <b>Họ và tên:</b> ${baseItem.Ho || ''} ${baseItem.Ten || ''}<br>
         <b>Số CCCD:</b> ${baseItem.CCCD || ''}<br>
         <b>Mã Số Thuế:</b> ${baseItem.MaSoThue || ''}<br>
-        <b>Số hóa đơn gộp:</b> <span style="font-weight:bold; color:#1e3a8a;">${groupRecords.length} dòng</span><br>
-        <b>Tổng tiền thanh toán:</b> <span style="color:#1e3a8a; font-weight:bold;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
+        <b>Số hóa đơn gộp:</b> <span style="font-weight:bold; color:#1e3a8a;">${groupRecords.length} dòng dữ liệu</span><br>
+        <b>Tổng tiền thanh toán một lần:</b> <span style="color:#1e3a8a; font-weight:bold; font-size: 14px;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
         <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
     `;
     document.getElementById('qrImage').src = qrUrl;
     document.getElementById('qrPopup').classList.remove('hidden');
 }
 
-// SỬA ĐỔI MỚI: Đồng bộ trạng thái ON-OFF đồng loạt cho các dòng cùng IDSUM lên Firebase
+// Cập nhật trạng thái ON-OFF đồng loạt cho tất cả các bản ghi có cùng IDSUM lên Firebase Realtime
 function verifyAndPayChange(toggleElement) {
     if (isUpdatingToggle || !currentSelectedIdSum) return;
 
     const isChecked = toggleElement.checked;
     const statusMsg = isChecked ? "ĐÃ THANH TOÁN" : "CHƯA THANH TOÁN";
     
-    if(confirm(`Bạn muốn chuyển trạng thái ĐỒNG LOẠT cho toàn bộ dòng có cùng IDSUM sang: ${statusMsg}?`)) {
+    if(confirm(`Bạn có chắc chắn muốn cập nhật trạng thái [${statusMsg}] ĐỒNG LOẠT cho tất cả các dòng của IDSUM này?`)) {
         
-        // Tìm toàn bộ các bản ghi thuộc IDSUM này trên bộ nhớ cục bộ
+        // Lấy danh sách các dòng cần cập nhật trạng thái chung
         const groupRecords = allData.filter(x => x.IDSUM === currentSelectedIdSum || x.ID === currentSelectedIdSum);
-        
         let updatePromises = [];
 
-        // Đẩy lệnh cập nhật trạng thái lên Firebase Realtime cho từng phần tử một
+        // Tạo tiến trình cập nhật Realtime lên Firebase cho từng bản ghi riêng biệt trong nhóm
         groupRecords.forEach(item => {
             let p = db.ref('QRCodeTax/' + item.ID).update({
                 DaThanhToan: isChecked
@@ -368,19 +380,20 @@ function verifyAndPayChange(toggleElement) {
             updatePromises.push(p);
         });
 
-        // Đợi tất cả tiến trình cập nhật hoàn thành
+        // Chạy đồng bộ tất cả các lệnh cập nhật
         Promise.all(updatePromises).then(() => {
             document.getElementById('toggleStatusLabel').innerText = isChecked ? "ON (Đã Đóng)" : "OFF (Chưa Đóng)";
             document.getElementById('toggleStatusLabel').style.color = isChecked ? "#10b981" : "#ef4444";
-            alert(`Đã cập nhật trạng thái ${statusMsg} thành công cho toàn bộ dòng dữ liệu!`);
+            alert(`Cập nhật trạng thái [${statusMsg}] thành công cho cả nhóm hóa đơn!`);
         }).catch((error) => {
-            alert("Lỗi cập nhật dữ liệu hàng loạt: " + error.message);
+            alert("Lỗi đồng bộ dữ liệu hàng loạt: " + error.message);
             isUpdatingToggle = true;
             toggleElement.checked = !isChecked;
             isUpdatingToggle = false;
         });
 
     } else {
+        // Trả lại vị trí cũ của nút gạt nếu người dùng chọn Cancel hủy bỏ lệnh
         isUpdatingToggle = true;
         toggleElement.checked = !isChecked;
         isUpdatingToggle = false;
