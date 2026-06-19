@@ -137,6 +137,9 @@ function updateThonToCombobox() {
     if(uniqueThonTo.includes(currentTt)) thonToSelect.value = currentTt;
 }
 
+// ==========================================================================
+// HÀM TÌM KIẾM DỮ LIỆU CHÍNH XÁC & TÌM GẦN ĐÚNG (MỚI KHẮC PHỤC)
+// ==========================================================================
 function searchData(isRealtimeUpdate = false) {
     if(!isRealtimeUpdate) {
         hasSearched = true; // Xác nhận người dùng đã chủ động bấm nút Tìm kiếm
@@ -145,13 +148,20 @@ function searchData(isRealtimeUpdate = false) {
     const pxValue = document.getElementById('filterPhuongXa').value;
     const ttValue = document.getElementById('filterThonTo').value;
     const statusValue = document.getElementById('filterTrangThai').value; 
-    const nameValue = document.getElementById('searchName').value.trim().toLowerCase(); // Yêu cầu 1: Tìm theo tên
+    
+    // Lấy chuỗi tìm kiếm từ ô nhập tên, chuyển về chữ thường và chuẩn hóa loại bỏ dấu tiếng Việt
+    const nameInp = document.getElementById('searchName').value.trim();
+    const nameValueClean = removeVietnameseTones(nameInp.toLowerCase()); 
 
     filteredData = allData;
 
+    // 1. Lọc theo Phường Xã
     if (pxValue) filteredData = filteredData.filter(item => item.PhuongXa === pxValue);
+    
+    // 2. Lọc theo Thôn Tổ
     if (ttValue) filteredData = filteredData.filter(item => item.ThonTo === ttValue);
     
+    // 3. Lọc theo Trạng thái thanh toán
     if (statusValue !== "") {
         const isPaid = statusValue === "true";
         filteredData = filteredData.filter(item => {
@@ -160,10 +170,16 @@ function searchData(isRealtimeUpdate = false) {
         });
     }
 
-    if (nameValue) {
+    // 4. Lọc TÌM KIẾM GẦN ĐÚNG theo Họ và Tên (Đã sửa lỗi)
+    if (nameValueClean) {
         filteredData = filteredData.filter(item => {
-            const fullName = `${item.Ho || ''} ${item.Ten || ''}`.toLowerCase();
-            return fullName.includes(nameValue) || removeVietnameseTones(fullName).includes(removeVietnameseTones(nameValue));
+            // Ghép họ và tên đầy đủ từ DB
+            const rawFullName = `${item.Ho || ''} ${item.Ten || ''}`;
+            // Chuyển họ tên đầy đủ về chữ thường và xóa sạch dấu tiếng Việt
+            const itemFullNameClean = removeVietnameseTones(rawFullName.toLowerCase());
+            
+            // Kiểm tra chuỗi tìm kiếm có nằm trong tên của khách hàng hay không (Gần đúng)
+            return itemFullNameClean.indexOf(nameValueClean) !== -1;
         });
     }
 
@@ -171,6 +187,31 @@ function searchData(isRealtimeUpdate = false) {
         currentPage = 1; 
     }
     renderTable();
+}
+
+// ==========================================================================
+// HÀM CHUẨN HÓA XÓA DẤU TIẾNG VIỆT TOÀN DIỆN (ĐÃ TỐI ƯU CỰC MẠNH)
+// ==========================================================================
+function removeVietnameseTones(str) {
+    if (!str) return "";
+    str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+    str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+    str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+    str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+    str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+    str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+    str = str.replace(/đ/g, "d");
+    str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+    str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+    str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+    str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+    str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+    str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+    str = str.replace(/Đ/g, "D");
+    
+    // Loại bỏ các ký tự dấu tổ hợp (Combining Diacritical Marks) trong unicode nếu có
+    str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return str;
 }
 
 function renderTable() {
@@ -349,21 +390,21 @@ function closePopup() {
     currentSelectedCustomerId = null; 
 }
 
-function removeVietnameseTones(str) {
-    if (!str) return "";
-    str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
-    str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ẽ/g, "e");
-    str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
-    str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
-    str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
-    str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
-    str = str.replace(/đ/g, "d");
-    str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
-    str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|ể|Ẽ/g, "E");
-    str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
-    str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
-    str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
-    str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
-    str = str.replace(/Đ/g, "D");
-    return str.trim();
-}
+// function removeVietnameseTones(str) {
+//     if (!str) return "";
+//     str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+//     str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ẽ/g, "e");
+//     str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+//     str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+//     str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+//     str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+//     str = str.replace(/đ/g, "d");
+//     str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+//     str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|ể|Ẽ/g, "E");
+//     str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+//     str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+//     str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+//     str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+//     str = str.replace(/Đ/g, "D");
+//     return str.trim();
+// }
