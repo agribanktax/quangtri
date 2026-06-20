@@ -355,38 +355,33 @@ tr:last-child td {
     height: 100%;
     object-fit: contain;
 }
-
-/* Khu vực công tắc gạt */
+/* THAY THẾ KHU VỰC CÔNG TẮC GẠT ON/OFF TRÊN POPUP */
 .status-toggle-zone {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 16px 0;
+    margin: 15px 0;
     padding: 12px;
     background-color: #f1f5f9;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
 }
-
 .status-toggle-zone span {
     font-size: 13px;
     font-weight: 600;
     color: #334155;
 }
-
 .switch {
     position: relative;
     display: inline-block;
     width: 46px;
     height: 24px;
 }
-
 .switch input {
     opacity: 0;
     width: 0;
     height: 0;
 }
-
 .slider {
     position: absolute;
     cursor: pointer;
@@ -395,7 +390,6 @@ tr:last-child td {
     transition: .3s;
     border-radius: 24px;
 }
-
 .slider:before {
     position: absolute;
     content: "";
@@ -407,11 +401,9 @@ tr:last-child td {
     transition: .3s;
     border-radius: 50%;
 }
-
 input:checked + .slider {
     background-color: #10b981;
 }
-
 input:checked + .slider:before {
     transform: translateX(22px);
 }
