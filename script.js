@@ -38,7 +38,7 @@ function checkLoginStatus() {
     if (currentUser) {
         if (loginWrapper) loginWrapper.classList.add('hidden'); 
         if (mainSection) mainSection.classList.remove('hidden'); 
-        document.getElementById('txtLoginUser').innerText = `👤 ${currentUser.username} (${currentUser.Branch})`;
+        document.getElementById('txtLoginUser').innerText = "👤 " + currentUser.username + " (" + currentUser.Branch + ")";
         fetchTaxData(); 
     } else {
         if (loginWrapper) loginWrapper.classList.remove('hidden'); 
@@ -91,11 +91,12 @@ function fetchTaxData() {
                     let item = data[id];
                     if (!item.ID) item.ID = id; 
                     
-                    if (item.BranchCode === currentUser.Branch || item.Branch === currentUser.Branch) {
+                    if (item.Branch === currentUser.Branch || item.BranchCode === currentUser.Branch) {
                         allData.push(item);
                     }
                 }
-                // Sắp xếp ưu tiên gom các dòng có chung IDSUM lại gần nhau để hiển thị gộp ô đẹp mắt
+                
+                // Đồng bộ sắp xếp theo IDSUM để các dòng cùng IDSUM nằm cạnh nhau
                 allData.sort((a, b) => {
                     if (a.IDSUM && b.IDSUM) {
                         if (a.IDSUM === b.IDSUM) {
@@ -107,7 +108,6 @@ function fetchTaxData() {
                 });
             }
             initComboboxes();
-            
             if (hasSearched) {
                 searchData(true); 
             }
@@ -124,7 +124,7 @@ function initComboboxes() {
     
     phuongXaSelect.innerHTML = '<option value="">-- Tất cả Phường/Xã --</option>';
     uniquePhuongXa.forEach(px => {
-        phuongXaSelect.innerHTML += `<option value="${px}">${px}</option>`;
+        phuongXaSelect.innerHTML += "<option value='" + px + "'>" + px + "</option>";
     });
     if(uniquePhuongXa.includes(currentPx)) phuongXaSelect.value = currentPx;
     updateThonToCombobox();
@@ -140,13 +140,13 @@ function updateThonToCombobox() {
 
     thonToSelect.innerHTML = '<option value="">-- Tất cả Thôn/Tổ --</option>';
     uniqueThonTo.forEach(tt => {
-        thonToSelect.innerHTML += `<option value="${tt}">${tt}</option>';
+        thonToSelect.innerHTML += "<option value='" + tt + "'>" + tt + "</option>";
     });
     if(uniqueThonTo.includes(currentTt)) thonToSelect.value = currentTt;
 }
 
 function searchData(isRealtimeUpdate = false) {
-    if(!isRealtimeUpdate) {
+    if (!isRealtimeUpdate) {
         hasSearched = true; 
     }
 
@@ -165,20 +165,21 @@ function searchData(isRealtimeUpdate = false) {
     if (statusValue !== "") {
         const isPaid = statusValue === "true";
         filteredData = filteredData.filter(item => {
-            const itemStatus = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1 || item.DaThanhToan === "1";
+            const itemStatus = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1;
             return itemStatus === isPaid;
         });
     }
 
+    // XỬ LÝ TÌM KIẾM GẦN ĐÚNG THEO TÊN
     if (nameValueClean) {
         filteredData = filteredData.filter(item => {
-            const rawFullName = `${item.Ho || ''} ${item.Ten || ''}`;
+            const rawFullName = (item.Ho || '') + " " + (item.Ten || '');
             const itemFullNameClean = removeVietnameseTones(rawFullName.toLowerCase());
             return itemFullNameClean.indexOf(nameValueClean) !== -1;
         });
     }
 
-    if(!isRealtimeUpdate) {
+    if (!isRealtimeUpdate) {
         currentPage = 1; 
     }
     renderTable();
@@ -189,13 +190,13 @@ function renderTable() {
     tbody.innerHTML = "";
 
     if (!hasSearched) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: #64748b; padding: 20px;">Vui lòng nhập điều kiện lọc và bấm nút "Tìm kiếm" để tải dữ liệu</td></tr>`;
+        tbody.innerHTML = "<tr><td colspan='9' style='text-align:center; color: #64748b; padding: 20px;'>Vui lòng nhập điều kiện lọc và bấm nút 'Tìm kiếm' để tải dữ liệu</td></tr>";
         updatePaginationControls(0);
         return;
     }
 
     if (!filteredData || filteredData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 20px;">Không tìm thấy dữ liệu phù hợp với địa bàn của bạn</td></tr>`;
+        tbody.innerHTML = "<tr><td colspan='9' style='text-align:center; padding: 20px;'>Không tìm thấy dữ liệu phù hợp với địa bàn của bạn</td></tr>";
         updatePaginationControls(0);
         return;
     }
@@ -209,12 +210,12 @@ function renderTable() {
         }
     });
 
-    // 2. Phân trang dữ liệu hiển thị
+    // 2. Phân trang dữ liệu
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
     const pageData = filteredData.slice(startIndex, endIndex);
 
-    // 3. THUẬT TOÁN ĐẾM ROWSPAN CHÍNH XÁC TRÊN TRANG HIỆN TẠI
+    // 3. Đếm số dòng xuất hiện của từng IDSUM trong trang hiện tại để tạo thuộc tính Rowspan
     let idsumCountsInPage = {};
     pageData.forEach(item => {
         if (item.IDSUM) {
@@ -222,67 +223,65 @@ function renderTable() {
         }
     });
 
-    // Các biến cờ đánh dấu trạng thái đã render ô gộp của từng nhóm IDSUM trên trang hiện tại
     let idsumRenderedName = {};
     let idsumRenderedTotal = {};
     let idsumRenderedAction = {};
 
-    // 4. TIẾN HÀNH DỰNG CÁC DÒNG (TR) TRÊN BẢNG DỮ LIỆU
+    // 4. Sinh các dòng của bảng
     pageData.forEach(item => {
         const tr = document.createElement('tr');
         
-        const isPaid = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1 || item.DaThanhToan === "1";
+        const isPaid = item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1;
         const statusText = isPaid
             ? "<b style='color:#10b981;'>Đã thanh toán</b>" 
             : "<b style='color:#ef4444;'>Chưa thanh toán</b>";
         
         // Cột 1: Mã số thuế
-        tr.innerHTML += `<td>${item.MaSoThue || ''}</td>`;
+        tr.innerHTML += "<td>" + (item.MaSoThue || '') + "</td>";
         
-        // Cột 2: Họ và tên (Gộp ô nếu có chung IDSUM)
+        // Cột 2: Họ và Tên (Gộp ô)
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedName[item.IDSUM]) {
-                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; background-color: #ffffff; font-weight: 600;">${item.Ho || ''} ${item.Ten || ''}</td>`;
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff; font-weight: 600;'>" + (item.Ho || '') + " " + (item.Ten || '') + "</td>";
                 idsumRenderedName[item.IDSUM] = true;
             }
         } else {
-            tr.innerHTML += `<td>${item.Ho || ''} ${item.Ten || ''}</td>`;
+            tr.innerHTML += "<td>" + (item.Ho || '') + " " + (item.Ten || '') + "</td>";
         }
 
-        // Cột 3, 4, 5, 6: Thông tin chi tiết hóa đơn lẻ
-        tr.innerHTML += `<td>${item.CCCD || ''}</td>`;
-        tr.innerHTML += `<td>${item.ThonTo || ''}</td>`;
-        tr.innerHTML += `<td>${item.PhuongXa || ''}</td>`;
-        tr.innerHTML += `<td>${item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0} đ</td>`;
+        // Cột 3, 4, 5, 6: Chi tiết hóa đơn
+        tr.innerHTML += "<td>" + (item.ThonTo || '') + "</td>";
+        tr.innerHTML += "<td>" + (item.PhuongXa || '') + "</td>";
+        tr.innerHTML += "<td><span style='background: #e0e7ff; color: #4338ca; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size:12px;'>" + (item.Branch || 'N/A') + "</span></td>";
+        tr.innerHTML += "<td>" + (item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0) + " đ</td>";
 
-        // Cột 7: Tổng tiền thanh toán nhóm (Gộp ô theo IDSUM)
+        // Cột 7: Tổng tiền thanh toán nộp gộp (Gộp ô theo IDSUM)
         const totalGroupAmount = idsumTotals[item.IDSUM] || Number(item.SoTienThuThue) || 0;
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedTotal[item.IDSUM]) {
-                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; background-color: #f8fafc; font-weight: bold; color: #1e3a8a; text-align: right;">${totalGroupAmount.toLocaleString('vi-VN')} đ</td>`;
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #f8fafc; font-weight: bold; color: #1e3a8a; text-align: right;'>" + totalGroupAmount.toLocaleString('vi-VN') + " đ</td>";
                 idsumRenderedTotal[item.IDSUM] = true;
             }
         } else {
-            tr.innerHTML += `<td style="font-weight: bold; color: #1e3a8a; text-align: right;">${totalGroupAmount.toLocaleString('vi-VN')} đ</td>`;
+            tr.innerHTML += "<td style='font-weight: bold; color: #1e3a8a; text-align: right;'>" + totalGroupAmount.toLocaleString('vi-VN') + " đ</td>";
         }
 
-        // Cột 8: Trạng thái đóng thuế của dòng đơn lẻ
-        tr.innerHTML += `<td>${statusText}</td>`;
+        // Cột 8: Trạng thái dòng lẻ
+        tr.innerHTML += "<td>" + statusText + "</td>";
         
-        // Cột 9: Hành động (GỘP CHUNG MÃ QR ĐỂ THANH TOÁN 1 LẦN CHO CÁC DÒNG CÓ CÙNG IDSUM)
+        // Cột 9: Hành động gộp chung duy nhất một nút bấm mã QR cho các dòng cùng IDSUM
         const targetIdSum = item.IDSUM || item.ID;
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedAction[item.IDSUM]) {
-                tr.innerHTML += `<td rowspan="${idsumCountsInPage[item.IDSUM]}" style="vertical-align: middle; text-align: center; background-color: #ffffff;">
-                    <button class="btn-table-qr" onclick="openQrPopupByIdSum('${targetIdSum}')">⚙ Quét QR Tổng</button>
-                </td>`;
-                idsumRenderedAction[item.IDSUM] = true; // Đánh dấu đã dựng nút chung thành công
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; text-align: center; background-color: #ffffff;'>\
+                    <button class='btn-table-qr' onclick=\"openQrPopupByIdSum('" + targetIdSum + "')\">⚙ Quét QR Tổng</button>\
+                </td>";
+                idsumRenderedAction[item.IDSUM] = true;
             }
         } else if (!item.IDSUM || idsumCountsInPage[item.IDSUM] <= 1) {
-            // Trường hợp khách hàng chỉ có duy nhất một hóa đơn lẻ
-            tr.innerHTML += `<td style="text-align: center;">
-                <button class="btn-table-qr" onclick="openQrPopupByIdSum('${targetIdSum}')">⚙ Quét QR</button>
-            </td>`;
+            tr.innerHTML += "<td style='text-align: center;'>\
+                <button class='btn-table-qr' onclick=\"openQrPopupByIdSum('" + targetIdSum + "')\">⚙ Quét QR</button>\
+            </td>";
         }
         
         tbody.appendChild(tr);
@@ -293,7 +292,7 @@ function renderTable() {
 
 function updatePaginationControls(totalItems) {
     const totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
-    document.getElementById('pageInfo').innerText = `Trang ${currentPage} / ${totalPages}`;
+    document.getElementById('pageInfo').innerText = "Trang " + currentPage + " / " + totalPages;
     document.getElementById('btnPrev').disabled = (currentPage === 1);
     document.getElementById('btnNext').disabled = (currentPage === totalPages);
 }
@@ -313,19 +312,18 @@ function nextPage() {
     }
 }
 
-// Mở QR Popup dựa trên IDSUM nhóm để thanh toán tổng tiền toàn bộ các bản ghi
+// Mở QR Popup gộp thanh toán theo IDSUM
 function openQrPopupByIdSum(idsum) {
     if (!idsum) return;
 
-    // Truy vết và lọc ra tất cả các hóa đơn của khách hàng có chung IDSUM này
     const groupRecords = allData.filter(x => x.IDSUM === idsum || x.ID === idsum);
     if (groupRecords.length === 0) return;
 
     const baseItem = groupRecords[0];
     currentSelectedIdSum = idsum; 
 
-    // Đồng bộ trạng thái vào nút gạt ON-OFF: Nút gạt bật (ON) khi và chỉ khi TẤT CẢ các dòng đều đã thanh toán
-    const isAllPaid = groupRecords.every(item => item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1 || item.DaThanhToan === "1");
+    // Đồng bộ kiểm tra trạng thái gạt: Chỉ bật ON khi tất cả các dòng đều đã đóng
+    const isAllPaid = groupRecords.every(item => item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1);
 
     isUpdatingToggle = true; 
     document.getElementById('switchPaymentStatus').checked = isAllPaid;
@@ -333,46 +331,40 @@ function openQrPopupByIdSum(idsum) {
     document.getElementById('toggleStatusLabel').style.color = isAllPaid ? "#10b981" : "#ef4444";
     isUpdatingToggle = false;
 
-    // Tính tổng số tiền thu thuế thực tế của toàn bộ các bản ghi có chung IDSUM này
+    // Tính tổng số tiền thu thuế cộng dồn
     let totalAmount = 0;
     groupRecords.forEach(r => {
         totalAmount += (Number(r.SoTienThuThue) || 0);
     });
 
-    // Nội dung chuyển khoản theo chuẩn: "IDSUM + Số CCCD + thue dat" (Chuỗi không dấu)
-    const rawPurpose = `${baseItem.IDSUM || ''} ${baseItem.CCCD || ''} thue dat`;
+    const rawPurpose = (baseItem.IDSUM || '') + " " + (baseItem.CCCD || baseItem.MaSoThue || '') + " thue dat";
     const purpose = removeVietnameseTones(rawPurpose);
 
-    // Tạo liên kết VietQR điền sẵn tổng tiền gộp thanh toán một lần
-    const qrUrl = `https://img.vietqr.io/image/${BANK_BIN}-${BANK_ACCOUNT}-qr_only.png?amount=${totalAmount}&addInfo=${encodeURIComponent(purpose)}`;
+    const qrUrl = "https://img.vietqr.io/image/" + BANK_BIN + "-" + BANK_ACCOUNT + "-qr_only.png?amount=" + totalAmount + "&addInfo=" + encodeURIComponent(purpose);
 
-    // Đổ dữ liệu chi tiết lên giao diện Popup
     document.getElementById('qrInfo').innerHTML = `
-        <b>Họ và tên:</b> ${baseItem.Ho || ''} ${baseItem.Ten || ''}<br>
-        <b>Số CCCD:</b> ${baseItem.CCCD || ''}<br>
+        <b>Khách hàng:</b> ${baseItem.Ho || ''} ${baseItem.Ten || ''}<br>
         <b>Mã Số Thuế:</b> ${baseItem.MaSoThue || ''}<br>
-        <b>Số hóa đơn gộp:</b> <span style="font-weight:bold; color:#1e3a8a;">${groupRecords.length} dòng dữ liệu</span><br>
-        <b>Tổng tiền thanh toán một lần:</b> <span style="color:#1e3a8a; font-weight:bold; font-size: 14px;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
+        <b>Số hóa đơn gộp:</b> <span style="font-weight:bold; color:#4338ca;">${groupRecords.length} dòng</span><br>
+        <b>Tổng tiền gom thanh toán:</b> <span style="color:#1e3a8a; font-weight:bold;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
         <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
     `;
     document.getElementById('qrImage').src = qrUrl;
     document.getElementById('qrPopup').classList.remove('hidden');
 }
 
-// Cập nhật trạng thái ON-OFF đồng loạt cho tất cả các bản ghi có cùng IDSUM lên Firebase Realtime
+// Đồng bộ cập nhật trạng thái đóng thuế hàng loạt lên Firebase
 function verifyAndPayChange(toggleElement) {
     if (isUpdatingToggle || !currentSelectedIdSum) return;
 
     const isChecked = toggleElement.checked;
     const statusMsg = isChecked ? "ĐÃ THANH TOÁN" : "CHƯA THANH TOÁN";
     
-    if(confirm(`Bạn có chắc chắn muốn cập nhật trạng thái [${statusMsg}] ĐỒNG LOẠT cho tất cả các dòng của IDSUM này?`)) {
+    if(confirm("Bạn muốn cập nhật trạng thái ĐỒNG LOẠT cho toàn bộ dòng có cùng IDSUM sang: " + statusMsg + "?")) {
         
-        // Lấy danh sách các dòng cần cập nhật trạng thái chung
         const groupRecords = allData.filter(x => x.IDSUM === currentSelectedIdSum || x.ID === currentSelectedIdSum);
         let updatePromises = [];
 
-        // Tạo tiến trình cập nhật Realtime lên Firebase cho từng bản ghi riêng biệt trong nhóm
         groupRecords.forEach(item => {
             let p = db.ref('QRCodeTax/' + item.ID).update({
                 DaThanhToan: isChecked
@@ -380,20 +372,18 @@ function verifyAndPayChange(toggleElement) {
             updatePromises.push(p);
         });
 
-        // Chạy đồng bộ tất cả các lệnh cập nhật
         Promise.all(updatePromises).then(() => {
             document.getElementById('toggleStatusLabel').innerText = isChecked ? "ON (Đã Đóng)" : "OFF (Chưa Đóng)";
             document.getElementById('toggleStatusLabel').style.color = isChecked ? "#10b981" : "#ef4444";
-            alert(`Cập nhật trạng thái [${statusMsg}] thành công cho cả nhóm hóa đơn!`);
+            alert("Đã cập nhật trạng thái thành công cho cả nhóm hóa đơn!");
         }).catch((error) => {
-            alert("Lỗi đồng bộ dữ liệu hàng loạt: " + error.message);
+            alert("Lỗi đồng bộ: " + error.message);
             isUpdatingToggle = true;
             toggleElement.checked = !isChecked;
             isUpdatingToggle = false;
         });
 
     } else {
-        // Trả lại vị trí cũ của nút gạt nếu người dùng chọn Cancel hủy bỏ lệnh
         isUpdatingToggle = true;
         toggleElement.checked = !isChecked;
         isUpdatingToggle = false;
