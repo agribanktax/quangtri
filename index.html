@@ -62,7 +62,7 @@
 
         <div class="filter-item">
             <label>Tìm theo Họ tên Khách hàng:</label>
-            <input type="text" id="searchName" placeholder="Nhập họ tên cần tìm...">
+            <input type="text" id="searchName" placeholder="Ví dụ: nguyen, van a, nguy...">
         </div>
 
         <button onclick="searchData()" class="btn-search">Tìm kiếm</button>
@@ -74,11 +74,11 @@
                 <tr>
                     <th>Mã số thuế</th>
                     <th>Họ và Tên</th>
-                    <th>Số CCCD</th>
                     <th>Thôn Tổ</th>
                     <th>Phường Xã</th>
-                    <th>Số tiền thu thuế</th>
-                    <th>Tổng tiền thanh toán</th>
+                    <th>Mã Địa bàn</th>
+                    <th>Số tiền lẻ dòng</th>
+                    <th>Tổng nộp gộp</th>
                     <th>Trạng thái</th>
                     <th style="text-align: center;">Hành động</th>
                 </tr>
@@ -86,7 +86,7 @@
             <tbody id="taxTableBody">
                 <tr>
                     <td colspan="9" style="text-align:center; color: #64748b; padding: 20px;">
-                        Vui lòng nhập điều kiện lọc và bấm nút "Tìm kiếm" để tải dữ liệu
+                        Vui lòng nhập điều kiện và bấm nút "Tìm kiếm"
                     </td>
                 </tr>
             </tbody>
@@ -103,20 +103,18 @@
 <div id="qrPopup" class="popup-overlay hidden">
     <div class="popup-content">
         <h3>Mã QR Thanh Toán Thuế</h3>
-        
         <div id="qrInfo"></div>
-        
         <div class="qr-container">
             <img id="qrImage" class="qr-img" src="" alt="Mã QR Chuyển Khoản">
         </div>
         
         <div class="status-toggle-zone">
-            <span>Trạng thái đóng thuế (Toàn bộ nhóm):</span>
+            <span>Xác nhận đóng thuế (Cả nhóm):</span>
             <label class="switch">
                 <input type="checkbox" id="switchPaymentStatus" onchange="verifyAndPayChange(this)">
-                <span class="slider round"></span>
+                <span class="slider"></span>
             </label>
-            <span id="toggleStatusLabel" style="font-weight: bold; min-width: 80px; text-align: right;">OFF</span>
+            <span id="toggleStatusLabel" style="font-weight: bold; min-width: 70px; text-align: right;">OFF</span>
         </div>
 
         <button onclick="closePopup()" class="btn-popup-close">Quay trở lại (Cancel)</button>
