@@ -373,30 +373,50 @@ function verifyAndPayChange(toggleElement) {
     const isChecked = toggleElement.checked;
     const statusMsg = isChecked ? "ĐÃ THANH TOÁN" : "CHƯA THANH TOÁN";
     
-    if(confirm("Bạn muốn cập nhật trạng thái ĐỒNG LOẠT cho toàn bộ dòng có cùng IDSUM sang: " + statusMsg + "?")) {
+    if (confirm("Bạn muốn cập nhật trạng thái ĐỒNG LOẠT cho toàn bộ dòng có cùng IDSUM sang: " + statusMsg + "?")) {
         
+        // Lọc ra toàn bộ các bản ghi thuộc nhóm IDSUM đang chọn
         const groupRecords = allData.filter(x => x.IDSUM === currentSelectedIdSum || x.ID === currentSelectedIdSum);
         let updatePromises = [];
 
         groupRecords.forEach(item => {
-            let p = db.ref('QRCodeTax/' + item.ID).update({
-                DaThanhToan: isChecked
-            });
-            updatePromises.push(p);
+            // Xác định chính xác Key/ID của bản ghi trên Firebase 
+            // Nếu item.ID không khớp, ta ưu tiên dùng thuộc tính duy nhất đại diện cho Khóa của bản ghi đó
+            const recordKey = item.ID || item.id || item.MaSoThue; 
+            
+            if (recordKey) {
+                let p = db.ref('QRCodeTax/' + recordKey).update({
+                    DaThanhToan: isChecked
+                });
+                updatePromises.push(p);
+            }
         });
+
+        if (updatePromises.length === 0) {
+            alert("Không tìm thấy ID bản ghi hợp lệ để cập nhật database!");
+            isUpdatingToggle = true;
+            toggleElement.checked = !isChecked;
+            isUpdatingToggle = false;
+            return;
+        }
 
         Promise.all(updatePromises).then(() => {
             document.getElementById('toggleStatusLabel').innerText = isChecked ? "ON (Đã Đóng)" : "OFF (Chưa Đóng)";
             document.getElementById('toggleStatusLabel').style.color = isChecked ? "#10b981" : "#ef4444";
-            alert("Đã cập nhật trạng thái thành công cho cả nhóm hóa đơn!");
+            alert("Đã cập nhật trạng thái thành công lên cơ sở dữ liệu cho cả nhóm!");
+            
+            // Tự động đóng popup và làm mới bảng dữ liệu trực quan
+            closePopup();
+            searchData(true);
         }).catch((error) => {
-            alert("Lỗi đồng bộ: " + error.message);
+            alert("Lỗi đồng bộ Firebase: " + error.message);
             isUpdatingToggle = true;
-            toggleElement.checked = !isChecked;
+            toggleElement.checked = !isChecked; // Trả công tắc về vị trí cũ nếu lỗi
             isUpdatingToggle = false;
         });
 
     } else {
+        // Nếu bấm Cancel (Hủy), trả công tắc về trạng thái cũ
         isUpdatingToggle = true;
         toggleElement.checked = !isChecked;
         isUpdatingToggle = false;
