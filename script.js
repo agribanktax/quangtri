@@ -224,6 +224,7 @@ function renderTable() {
     });
 
     let idsumRenderedName = {};
+    let idsumRenderedCCCD = {};
     let idsumRenderedTotal = {};
     let idsumRenderedAction = {};
 
@@ -249,10 +250,19 @@ function renderTable() {
             tr.innerHTML += "<td>" + (item.Ho || '') + " " + (item.Ten || '') + "</td>";
         }
 
-        // Cột 3, 4, 5, 6: Chi tiết hóa đơn
+        // Cột 3: CCCD (Gộp ô tương tự Họ Tên)
+        if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
+            if (!idsumRenderedCCCD[item.IDSUM]) {
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + (item.CCCD || '') + "</td>";
+                idsumRenderedCCCD[item.IDSUM] = true;
+            }
+        } else {
+            tr.innerHTML += "<td>" + (item.CCCD || '') + "</td>";
+        }
+
+        // Cột 4, 5, 6: Địa bàn và số tiền lẻ dòng
         tr.innerHTML += "<td>" + (item.ThonTo || '') + "</td>";
         tr.innerHTML += "<td>" + (item.PhuongXa || '') + "</td>";
-        tr.innerHTML += "<td><span style='background: #e0e7ff; color: #4338ca; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size:12px;'>" + (item.Branch || 'N/A') + "</span></td>";
         tr.innerHTML += "<td>" + (item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0) + " đ</td>";
 
         // Cột 7: Tổng tiền thanh toán nộp gộp (Gộp ô theo IDSUM)
@@ -337,14 +347,17 @@ function openQrPopupByIdSum(idsum) {
         totalAmount += (Number(r.SoTienThuThue) || 0);
     });
 
-    const rawPurpose = (baseItem.IDSUM || '') + " " + (baseItem.CCCD || baseItem.MaSoThue || '') + " thue dat";
+    // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI
+    const hoten = (baseItem.Ho || '') + " " + (baseItem.Ten || '');
+    const rawPurpose = (baseItem.MaSoThue || '') + " " + hoten + " nop thue dat ID" + (baseItem.IDSUM || '');
     const purpose = removeVietnameseTones(rawPurpose);
 
     const qrUrl = "https://img.vietqr.io/image/" + BANK_BIN + "-" + BANK_ACCOUNT + "-qr_only.png?amount=" + totalAmount + "&addInfo=" + encodeURIComponent(purpose);
 
     document.getElementById('qrInfo').innerHTML = `
-        <b>Khách hàng:</b> ${baseItem.Ho || ''} ${baseItem.Ten || ''}<br>
+        <b>Khách hàng:</b> ${hoten}<br>
         <b>Mã Số Thuế:</b> ${baseItem.MaSoThue || ''}<br>
+        <b>CCCD:</b> ${baseItem.CCCD || ''}<br>
         <b>Số hóa đơn gộp:</b> <span style="font-weight:bold; color:#4338ca;">${groupRecords.length} dòng</span><br>
         <b>Tổng tiền gom thanh toán:</b> <span style="color:#1e3a8a; font-weight:bold;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
         <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
