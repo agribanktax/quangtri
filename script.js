@@ -1,6 +1,6 @@
 // CẤU HÌNH NGÂN HÀNG ĐÍCH
 const BANK_BIN = "VBA"; 
-const BANK_ACCOUNT = "3900205361940"; 
+const BANK_ACCOUNT = "3902201013072"; 
 
 const firebaseConfig = {
     apiKey: "AIzaSyAOSKLNPXp-s40iJNYYzdEWDnQDFoa6x_Q",
