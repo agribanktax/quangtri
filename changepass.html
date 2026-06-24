@@ -49,7 +49,14 @@
             box-sizing: border-box;
             outline: none;
         }
-        .form-group input:focus {
+        /* Style riêng cho ô không cho sửa */
+        .form-group input[readonly] {
+            background-color: #e2e8f0;
+            color: #64748b;
+            cursor: not-allowed;
+            border-color: #cbd5e1;
+        }
+        .form-group input:focus:not([readonly]) {
             border-color: #4f46e5;
         }
         .btn-submit {
@@ -83,8 +90,8 @@
     <h2>🔒 Đổi Mật Khẩu</h2>
     
     <div class="form-group">
-        <label>👤 Tên đăng nhập (Username):</label>
-        <input type="text" id="txtUsername" placeholder="Nhập tài khoản cán bộ...">
+        <label>👤 Tài khoản cán bộ:</label>
+        <input type="text" id="txtUsername" readonly>
     </div>
     
     <div class="form-group">
@@ -103,14 +110,14 @@
     </div>
     
     <button class="btn-submit" onclick="executeChangePassword()">Xác nhận đổi mật khẩu</button>
-    <a href="index.html" class="btn-back">⬅ Quay lại trang đăng nhập</a>
+    <a href="index.html" class="btn-back">⬅ Quay lại hệ thống</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-    // Copy chính xác cấu hình Firebase từ file script.js cũ của bạn điền vào đây
+    // Điền cấu hình Firebase của bạn vào đây
     const firebaseConfig = {
         apiKey: "AIzaSyAOSKLNPXp-s40iJNYYzdEWDnQDFoa6x_Q",
         authDomain: "thue2026-f558d.firebaseapp.com",
@@ -121,11 +128,21 @@
         appId: "1:1008017359572:web:f70cf40778e600e8deb141"
     };
     
-    // Khởi tạo Firebase độc lập cho trang này
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
+
+    // TỰ ĐỘNG LẤY USERNAME KHI TRANG ĐƯỢC TẢI
+    window.onload = function() {
+        const savedUsername = sessionStorage.getItem('changePassUsername');
+        if (savedUsername) {
+            document.getElementById('txtUsername').value = savedUsername;
+        } else {
+            alert("Không tìm thấy thông tin phiên làm việc. Vui lòng quay lại đăng nhập!");
+            window.location.href = "index.html";
+        }
+    };
 
     function executeChangePassword() {
         const username = document.getElementById('txtUsername').value.trim();
@@ -133,7 +150,7 @@
         const newPass = document.getElementById('txtNewPass').value.trim();
         const confirmPass = document.getElementById('txtConfirmPass').value.trim();
 
-        if (!username || !oldPass || !newPass || !confirmPass) {
+        if (!oldPass || !newPass || !confirmPass) {
             alert("Vui lòng điền đầy đủ thông tin vào tất cả các ô!");
             return;
         }
@@ -148,33 +165,34 @@
             return;
         }
 
-        // Truy vấn tới nút dữ liệu của user tương ứng
         db.ref('users/' + username).once('value').then((snapshot) => {
             const userData = snapshot.val();
             
             if (userData) {
-                // SỬA LỖI ĐỒNG BỘ KIỂU DỮ LIỆU: Ép cả 2 về String để so sánh chuẩn xác nhất
-                const dbPasswordStr = String(userData.password);
-                const inputPasswordStr = String(oldPass);
+                // ÉP KIỂU TUYỆT ĐỐI VỀ STRING ĐỂ SO SÁNH (Sửa lỗi số 123)
+                const dbPasswordStr = String(userData.password).trim();
+                const inputPasswordStr = String(oldPass).trim();
 
                 if (dbPasswordStr === inputPasswordStr) {
-                    // Đúng mật khẩu cũ -> Thực hiện cập nhật chuỗi mật khẩu mới
+                    // Cập nhật mật khẩu mới (Lưu dưới dạng chuỗi)
                     db.ref('users/' + username).update({
-                        password: newPass
+                        password: String(newPass)
                     }).then(() => {
-                        alert("Đổi mật khẩu thành công! Hệ thống sẽ chuyển hướng về trang đăng nhập.");
-                        window.location.href = "index.html"; // Chuyển trang tự động
+                        alert("Đổi mật khẩu thành công! Vui lòng đăng nhập lại bằng mật khẩu mới.");
+                        // Xóa sạch session đăng nhập cũ và chuyển về index.html bắt đăng nhập lại
+                        sessionStorage.clear(); 
+                        window.location.href = "index.html";
                     }).catch(err => {
-                        alert("Lỗi cập nhật mật khẩu: " + err.message);
+                        alert("Lỗi cập nhật: " + err.message);
                     });
                 } else {
                     alert("Mật khẩu hiện tại không chính xác!");
                 }
             } else {
-                alert("Tài khoản cán bộ không tồn tại trên hệ thống!");
+                alert("Tài khoản không tồn tại hoặc dữ liệu bị lỗi!");
             }
         }).catch(err => {
-            alert("Lỗi kết nối Firebase: " + err.message);
+            alert("Lỗi kết nối database: " + err.message);
         });
     }
 </script>
