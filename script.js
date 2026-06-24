@@ -264,6 +264,7 @@ function renderTable() {
         // Cột 4, 5, 6: Địa bàn và số tiền lẻ dòng
         tr.innerHTML += "<td>" + (item.ThonTo || '') + "</td>";
         tr.innerHTML += "<td>" + (item.PhuongXa || '') + "</td>";
+        tr.innerHTML += "<td>" + (item.TieuMuc || '') + "</td>";
         tr.innerHTML += "<td>" + (item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0) + " đ</td>";
 
         // Cột 7: Tổng tiền thanh toán nộp gộp (Gộp ô theo IDSUM)
