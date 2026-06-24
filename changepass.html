@@ -49,7 +49,6 @@
             box-sizing: border-box;
             outline: none;
         }
-        /* Style riêng cho ô không cho sửa */
         .form-group input[readonly] {
             background-color: #e2e8f0;
             color: #64748b;
@@ -117,7 +116,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-    // Điền cấu hình Firebase của bạn vào đây
     const firebaseConfig = {
         apiKey: "AIzaSyAOSKLNPXp-s40iJNYYzdEWDnQDFoa6x_Q",
         authDomain: "thue2026-f558d.firebaseapp.com",
@@ -133,13 +131,13 @@
     }
     const db = firebase.database();
 
-    // TỰ ĐỘNG LẤY USERNAME KHI TRANG ĐƯỢC TẢI
+    // Tự động điền username từ trang chính khi mở trang
     window.onload = function() {
         const savedUsername = sessionStorage.getItem('changePassUsername');
         if (savedUsername) {
             document.getElementById('txtUsername').value = savedUsername;
         } else {
-            alert("Không tìm thấy thông tin phiên làm việc. Vui lòng quay lại đăng nhập!");
+            alert("Không tìm thấy thông tin phiên làm việc. Vui lòng đăng nhập lại!");
             window.location.href = "index.html";
         }
     };
@@ -165,31 +163,38 @@
             return;
         }
 
-        db.ref('users/' + username).once('value').then((snapshot) => {
-            const userData = snapshot.val();
-            
-            if (userData) {
-                // ÉP KIỂU TUYỆT ĐỐI VỀ STRING ĐỂ SO SÁNH (Sửa lỗi số 123)
+        // THAY ĐỔI QUAN TRỌNG: Lọc danh sách users tìm bản ghi có trường 'username' bằng giá trị cần tìm
+        db.ref('users').orderByChild('username').equalTo(username).once('value').then((snapshot) => {
+            if (snapshot.exists()) {
+                let userKey = null;
+                let userData = null;
+
+                // Vì kết quả trả về là một danh sách các node thỏa mãn (mặc dù chỉ có 1), ta cần dùng vòng lặp để lấy ra
+                snapshot.forEach((childSnapshot) => {
+                    userKey = childSnapshot.key; // Đây chính là ID của tài khoản (id_key) trên Firebase
+                    userData = childSnapshot.val();
+                });
+
+                // Ép kiểu String tuyệt đối để so sánh chính xác (mật khẩu số hay chữ đều nhận diện được)
                 const dbPasswordStr = String(userData.password).trim();
                 const inputPasswordStr = String(oldPass).trim();
 
                 if (dbPasswordStr === inputPasswordStr) {
-                    // Cập nhật mật khẩu mới (Lưu dưới dạng chuỗi)
-                    db.ref('users/' + username).update({
+                    // Tiến hành cập nhật mật khẩu mới trực tiếp vào ID vừa tìm được (userKey)
+                    db.ref('users/' + userKey).update({
                         password: String(newPass)
                     }).then(() => {
-                        alert("Đổi mật khẩu thành công! Vui lòng đăng nhập lại bằng mật khẩu mới.");
-                        // Xóa sạch session đăng nhập cũ và chuyển về index.html bắt đăng nhập lại
-                        sessionStorage.clear(); 
+                        alert("Đổi mật khẩu thành công! Hệ thống sẽ chuyển về trang đăng nhập.");
+                        sessionStorage.clear(); // Xóa sạch phiên làm việc cũ để bảo mật
                         window.location.href = "index.html";
                     }).catch(err => {
-                        alert("Lỗi cập nhật: " + err.message);
+                        alert("Lỗi cập nhật mật khẩu: " + err.message);
                     });
                 } else {
                     alert("Mật khẩu hiện tại không chính xác!");
                 }
             } else {
-                alert("Tài khoản không tồn tại hoặc dữ liệu bị lỗi!");
+                alert("Không tìm thấy tài khoản cán bộ này trên cơ sở dữ liệu!");
             }
         }).catch(err => {
             alert("Lỗi kết nối database: " + err.message);
