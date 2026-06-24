@@ -374,7 +374,7 @@ async function openQrPopupByIdSum(idsum) {
 
     isUpdatingToggle = true; 
     document.getElementById('switchPaymentStatus').checked = isAllPaid;
-    document.getElementById('toggleStatusLabel').innerText = isAllPaid ? "ON (Đã Đóng)" : "OFF (Chưa Đóng)";
+    document.getElementById('toggleStatusLabel').innerText = isAllPaid ? "ON (Đã Nộp)" : "OFF (Chưa Nộp)";
     document.getElementById('toggleStatusLabel').style.color = isAllPaid ? "#10b981" : "#ef4444";
     isUpdatingToggle = false;
 
@@ -396,11 +396,11 @@ async function openQrPopupByIdSum(idsum) {
 
     // HIỂN THỊ THÔNG TIN CHỮ LÊN GIAO DIỆN CHÍNH XÁC
     document.getElementById('qrInfo').innerHTML = `
-        <b>Khách hàng:</b> ${hoten}<br>
+        <b>Người nộp thuế:</b> ${hoten}<br>
         <b>Mã Số Thuế:</b> ${baseItem.MaSoThue || ''}<br>
         <b>CCCD:</b> ${baseItem.CCCD || ''}<br>
-        <b>Số hóa đơn gộp:</b> <span style="font-weight:bold; color:#4338ca;">${groupRecords.length} dòng</span><br>
-        <b>Tổng tiền gom thanh toán:</b> <span style="color:#1e3a8a; font-weight:bold;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
+        <b>Số khoản thuế phải nộp:</b> <span style="font-weight:bold; color:#4338ca;">${groupRecords.length} </span><br>
+        <b>Tổng số tiền phải nộp:</b> <span style="color:#1e3a8a; font-weight:bold;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
         <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
     `;
 
