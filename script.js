@@ -525,26 +525,33 @@ function removeVietnameseTones(str) {
     str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     return str.trim();
 }
-// 1. Hàm ẩn/hiện vùng đổi mật khẩu trong màn hình chính
+
+
+// 1. Hàm ẩn/hiện vùng đổi mật khẩu tại màn hình chính
 function toggleChangePassMain() {
     const zone = document.getElementById('mainChangePasswordZone');
     const btn = document.getElementById('btnTogglePassMain');
     
-    if (zone.classList.contains('hidden')) {
+    if (!zone || !btn) return;
+
+    // Kiểm tra nếu đang ẩn thì hiển thị lên và ngược lại
+    if (zone.classList.contains('hidden') || zone.style.display === 'none' || zone.style.display === '') {
         zone.classList.remove('hidden');
+        zone.style.setProperty('display', 'block', 'important'); // Ghi đè class ẩn
         btn.innerText = "❌ Hủy đổi mật khẩu";
         btn.style.backgroundColor = "#ef4444";
     } else {
+        zone.style.setProperty('display', 'none', 'important');
         zone.classList.add('hidden');
         btn.innerText = "🔒 Đổi mật khẩu tài khoản";
         btn.style.backgroundColor = "#4f46e5";
     }
 }
 
-// 2. Hàm xử lý đổi mật khẩu khi đã đăng nhập
+// 2. Hàm xử lý nghiệp vụ đổi mật khẩu trên Firebase Realtime
 function changePasswordInMain() {
     if (!currentUser || !currentUser.username) {
-        alert("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại!");
+        alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn!");
         return;
     }
 
@@ -552,28 +559,27 @@ function changePasswordInMain() {
     const newPass = document.getElementById('mainNewPass').value.trim();
     const confirmNewPass = document.getElementById('mainConfirmNewPass').value.trim();
 
-    // Kiểm tra dữ liệu đầu vào
     if (!oldPass || !newPass || !confirmNewPass) {
-        alert("Vui lòng nhập đầy đủ tất cả các ô mật khẩu!");
+        alert("Vui lòng nhập đầy đủ thông tin vào các ô trống!");
         return;
     }
 
     if (newPass === oldPass) {
-        alert("Mật khẩu mới phải khác mật khẩu hiện tại!");
+        alert("Mật khẩu mới không được trùng mật khẩu cũ!");
         return;
     }
 
     if (newPass !== confirmNewPass) {
-        alert("Xác nhận mật khẩu mới không khớp!");
+        alert("Xác nhận mật khẩu mới không chính xác!");
         return;
     }
 
     if (newPass.length < 6) {
-        alert("Mật khẩu mới phải từ 6 ký tự trở lên!");
+        alert("Mật khẩu mới phải có độ dài tối thiểu 6 ký tự!");
         return;
     }
 
-    // Xác thực mật khẩu cũ dựa vào username đang đăng nhập
+    // Thực hiện truy vấn kiểm tra mật khẩu hiện tại
     const userRef = db.ref('users/' + currentUser.username);
     
     userRef.once('value').then((snapshot) => {
@@ -585,14 +591,12 @@ function changePasswordInMain() {
                 password: newPass
             }).then(() => {
                 alert("Đổi mật khẩu thành công! Hệ thống sẽ tự động đăng xuất để bảo mật.");
-                // Xóa trắng form nhập liệu
                 document.getElementById('mainOldPass').value = "";
                 document.getElementById('mainNewPass').value = "";
                 document.getElementById('mainConfirmNewPass').value = "";
-                // Gọi hàm logout có sẵn trong file script.js của bạn
-                logout();
+                logout(); // Gọi hàm đăng xuất có sẵn của hệ thống
             }).catch(err => {
-                alert("Lỗi khi cập nhật mật khẩu: " + err.message);
+                alert("Lỗi cập nhật Firebase: " + err.message);
             });
         } else {
             alert("Mật khẩu hiện tại không chính xác!");
@@ -601,4 +605,3 @@ function changePasswordInMain() {
         alert("Lỗi kết nối cơ sở dữ liệu: " + err.message);
     });
 }
-
