@@ -525,31 +525,46 @@ function removeVietnameseTones(str) {
     str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     return str.trim();
 }
-// Thêm hàm này vào cuối file script.js
-function changePasswordAtLogin() {
-    const userInp = document.getElementById('loginUsername').value.trim();
-    const oldPass = document.getElementById('loginPassword').value.trim();
-    const newPass = document.getElementById('changePassNew').value.trim();
-    const confirmNewPass = document.getElementById('changePassConfirm').value.trim();
+// 1. Hàm ẩn/hiện vùng đổi mật khẩu trong màn hình chính
+function toggleChangePassMain() {
+    const zone = document.getElementById('mainChangePasswordZone');
+    const btn = document.getElementById('btnTogglePassMain');
+    
+    if (zone.classList.contains('hidden')) {
+        zone.classList.remove('hidden');
+        btn.innerText = "❌ Hủy đổi mật khẩu";
+        btn.style.backgroundColor = "#ef4444";
+    } else {
+        zone.classList.add('hidden');
+        btn.innerText = "🔒 Đổi mật khẩu tài khoản";
+        btn.style.backgroundColor = "#4f46e5";
+    }
+}
 
-    // 1. Kiểm tra dữ liệu đầu vào cơ bản
-    if (!userInp || !oldPass) {
-        alert("Vui lòng điền 'Tên đăng nhập' và 'Mật khẩu hiện tại' ở phía trên trước!");
+// 2. Hàm xử lý đổi mật khẩu khi đã đăng nhập
+function changePasswordInMain() {
+    if (!currentUser || !currentUser.username) {
+        alert("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại!");
         return;
     }
 
-    if (!newPass || !confirmNewPass) {
-        alert("Vui lòng nhập đầy đủ Mật khẩu mới và Xác nhận mật khẩu mới!");
+    const oldPass = document.getElementById('mainOldPass').value.trim();
+    const newPass = document.getElementById('mainNewPass').value.trim();
+    const confirmNewPass = document.getElementById('mainConfirmNewPass').value.trim();
+
+    // Kiểm tra dữ liệu đầu vào
+    if (!oldPass || !newPass || !confirmNewPass) {
+        alert("Vui lòng nhập đầy đủ tất cả các ô mật khẩu!");
         return;
     }
 
     if (newPass === oldPass) {
-        alert("Mật khẩu mới không được trùng với mật khẩu cũ đang nhập!");
+        alert("Mật khẩu mới phải khác mật khẩu hiện tại!");
         return;
     }
 
     if (newPass !== confirmNewPass) {
-        alert("Xác nhận mật khẩu mới không trùng khớp!");
+        alert("Xác nhận mật khẩu mới không khớp!");
         return;
     }
 
@@ -558,25 +573,29 @@ function changePasswordAtLogin() {
         return;
     }
 
-    // 2. Xác thực tài khoản & mật khẩu cũ trên Firebase
-    db.ref('users/' + userInp).once('value').then((snapshot) => {
+    // Xác thực mật khẩu cũ dựa vào username đang đăng nhập
+    const userRef = db.ref('users/' + currentUser.username);
+    
+    userRef.once('value').then((snapshot) => {
         const userData = snapshot.val();
         
         if (userData && userData.password === oldPass) {
-            // Đúng mật khẩu cũ -> Tiến hành cập nhật mật khẩu mới
-            db.ref('users/' + userInp).update({
+            // Đúng mật khẩu cũ -> Tiến hành cập nhật
+            userRef.update({
                 password: newPass
             }).then(() => {
-                alert("Đổi mật khẩu thành công! Hãy dùng mật khẩu mới để đăng nhập.");
-                // Reset các ô nhập mật khẩu mới
-                document.getElementById('loginPassword').value = "";
-                document.getElementById('changePassNew').value = "";
-                document.getElementById('changePassConfirm').value = "";
+                alert("Đổi mật khẩu thành công! Hệ thống sẽ tự động đăng xuất để bảo mật.");
+                // Xóa trắng form nhập liệu
+                document.getElementById('mainOldPass').value = "";
+                document.getElementById('mainNewPass').value = "";
+                document.getElementById('mainConfirmNewPass').value = "";
+                // Gọi hàm logout có sẵn trong file script.js của bạn
+                logout();
             }).catch(err => {
                 alert("Lỗi khi cập nhật mật khẩu: " + err.message);
             });
         } else {
-            alert("Tên đăng nhập hoặc mật khẩu hiện tại không chính xác!");
+            alert("Mật khẩu hiện tại không chính xác!");
         }
     }).catch(err => {
         alert("Lỗi kết nối cơ sở dữ liệu: " + err.message);
