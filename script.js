@@ -39,7 +39,7 @@ function checkLoginStatus() {
     if (currentUser) {
         if (loginWrapper) loginWrapper.classList.add('hidden'); 
         if (mainSection) mainSection.classList.remove('hidden'); 
-        document.getElementById('txtLoginUser').innerText = "👤 " + currentUser.username + "<div>&nbsp;</div> ";
+        document.getElementById('txtLoginUser').innerText = "👤 " + currentUser.username + "&nbsp;";
         fetchTaxData(); 
     } else {
         if (loginWrapper) loginWrapper.classList.remove('hidden'); 
