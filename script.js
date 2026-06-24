@@ -285,7 +285,7 @@ function renderTable() {
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedAction[item.IDSUM]) {
                 tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; text-align: center; background-color: #ffffff;'>\
-                    <button class='btn-table-qr' onclick=\"openQrPopupByIdSum('" + targetIdSum + "')\">⚙ Quét QR Tổng</button>\
+                    <button class='btn-table-qr' onclick=\"openQrPopupByIdSum('" + targetIdSum + "')\">⚙ Quét QR</button>\
                 </td>";
                 idsumRenderedAction[item.IDSUM] = true;
             }
