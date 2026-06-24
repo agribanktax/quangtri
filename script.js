@@ -351,7 +351,7 @@ async function openQrPopupByIdSum(idsum) {
     const hoten = (baseItem.Ho || '') + " " + (baseItem.Ten || '');
     
     // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI TỰ ĐỘNG ĐO ĐỘ DÀI
-    const rawPurpose = (baseItem.MaSoThue || '') + " ngo Duc Thao ung dung test ID" + (baseItem.IDSUM || baseItem.ID || '');
+    const rawPurpose = (baseItem.MaSoThue || '') + " " + hoten + " nop thue dat ID" + (baseItem.IDSUM || baseItem.ID || '');
     const purpose = removeVietnameseTones(rawPurpose).replace(/\s+/g, ' '); // Xóa dấu và khoảng trắng thừa
 
     // Đặt ảnh tạm trong lúc đợi API POST phản hồi
