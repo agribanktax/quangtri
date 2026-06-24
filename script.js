@@ -526,13 +526,37 @@ function removeVietnameseTones(str) {
     return str.trim();
 }
 
-// Thêm hàm này vào cuối file script.js của trang index.html
+// Thay thế hoặc thêm hàm này vào cuối file script.js của trang chính (index.html)
 function goToChangePassPage() {
+    // Kiểm tra xem hệ thống đã có thông tin currentUser chưa
     if (currentUser && currentUser.username) {
-        // Lưu tên tài khoản hiện tại vào bộ nhớ session
-        sessionStorage.setItem('changePassUsername', currentUser.username);
-        // Chuyển hướng sang trang đổi mật khẩu
-        window.location.href = "changepass.html";
+        
+        // Bước 1: Truy vấn Firebase một lần nữa để lấy chính xác id_key dựa vào username hiện tại
+        db.ref('users').orderByChild('username').equalTo(currentUser.username).once('value').then((snapshot) => {
+            if (snapshot.exists()) {
+                let idKey = null;
+                
+                snapshot.forEach((childSnapshot) => {
+                    idKey = childSnapshot.key; // Lấy chính xác id_key (ví dụ: "canbo01", "user_123"...)
+                });
+
+                if (idKey) {
+                    // Bước 2: Lưu cả username và id_key vào sessionStorage
+                    sessionStorage.setItem('changePassUsername', currentUser.username);
+                    sessionStorage.setItem('changePassIdKey', idKey);
+                    
+                    // Bước 3: Chuyển hướng sang trang đổi mật khẩu độc lập
+                    window.location.href = "changepass.html";
+                } else {
+                    alert("Không thể xác định mã định danh (id_key) của tài khoản!");
+                }
+            } else {
+                alert("Tài khoản không tồn tại trên cơ sở dữ liệu!");
+            }
+        }).catch(err => {
+            alert("Lỗi kết nối hệ thống: " + err.message);
+        });
+        
     } else {
         alert("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại!");
     }
