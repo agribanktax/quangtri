@@ -255,7 +255,7 @@ function renderTable() {
         // Cột 2: Họ và Tên (Gộp ô)
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedName[item.IDSUM]) {
-                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff; font-weight: 600;'>" + (item.Ho || '') + " " + (item.Ten || '') + "</td>";
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff; '>" + (item.Ho || '') + " " + (item.Ten || '') + "</td>";
                 idsumRenderedName[item.IDSUM] = true;
             }
         } else {
