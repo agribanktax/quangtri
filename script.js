@@ -323,7 +323,7 @@ function nextPage() {
 }
 
 // Mở QR Popup gộp thanh toán theo IDSUM
-function openQrPopupByIdSum(idsum) {
+async function openQrPopupByIdSum(idsum) { // Thêm async ở đây để xử lý gọi API dữ liệu
     if (!idsum) return;
 
     const groupRecords = allData.filter(x => x.IDSUM === idsum || x.ID === idsum);
@@ -349,12 +349,10 @@ function openQrPopupByIdSum(idsum) {
 
     // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI
     const hoten = (baseItem.Ho || '') + " " + (baseItem.Ten || '');
-    // const rawPurpose = (baseItem.MaSoThue || '') + " " + hoten + " nop thue dat ID" + (baseItem.IDSUM || '');
     const rawPurpose = (baseItem.MaSoThue || '') + " " + 'ngo Duc Thao' + " ung dung test ID" + (baseItem.IDSUM || '');
     const purpose = removeVietnameseTones(rawPurpose);
 
-    const qrUrl = "https://img.vietqr.io/image/" + BANK_BIN + "-" + BANK_ACCOUNT + "-qr_only.png?amount=" + totalAmount + "&addInfo=" + encodeURIComponent(purpose);
-
+    // HIỂN THỊ THÔNG TIN CHỮ LÊN GIAO DIỆN TRƯỚC
     document.getElementById('qrInfo').innerHTML = `
         <b>Khách hàng:</b> ${hoten}<br>
         <b>Mã Số Thuế:</b> ${baseItem.MaSoThue || ''}<br>
@@ -363,8 +361,44 @@ function openQrPopupByIdSum(idsum) {
         <b>Tổng tiền gom thanh toán:</b> <span style="color:#1e3a8a; font-weight:bold;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
         <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
     `;
-    document.getElementById('qrImage').src = qrUrl;
+
+    // Đặt ảnh tạm thời trong lúc đợi tải QR
+    document.getElementById('qrImage').src = "https://placehold.co/300x300?text=Dang+tao+ma+QR...";
     document.getElementById('qrPopup').classList.remove('hidden');
+
+    // SỬA ĐỔI: Gọi API VietQR theo phương thức POST để không bị cắt nội dung
+    try {
+        const response = await fetch("https://api.vietqr.io/v2/generate", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                accountNo: BANK_ACCOUNT,
+                accountName: "", // Có thể để trống hoặc điền tên chủ tài khoản ngân hàng
+                acqId: BANK_BIN,
+                amount: totalAmount,
+                addInfo: purpose,
+                format: "qr_only",
+                template: "compact"
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result && result.code === "00") {
+            // Thay thế ảnh bằng chuỗi Base64 trả về đầy đủ nội dung
+            document.getElementById('qrImage').src = result.data.qrDataURL;
+        } else {
+            console.error("Lỗi tạo mã QR từ VietQR API:", result.desc);
+            // Phương án dự phòng (fallback) quay lại link cũ nếu API lỗi
+            document.getElementById('qrImage').src = "https://img.vietqr.io/image/" + BANK_BIN + "-" + BANK_ACCOUNT + "-qr_only.png?amount=" + totalAmount + "&addInfo=" + encodeURIComponent(purpose);
+        }
+    } catch (error) {
+        console.error("Lỗi kết nối API:", error);
+        // Phương án dự phòng (fallback) khi mất mạng
+        document.getElementById('qrImage').src = "https://img.vietqr.io/image/" + BANK_BIN + "-" + BANK_ACCOUNT + "-qr_only.png?amount=" + totalAmount + "&addInfo=" + encodeURIComponent(purpose);
+    }
 }
 
 // Đồng bộ cập nhật trạng thái đóng thuế hàng loạt lên Firebase
