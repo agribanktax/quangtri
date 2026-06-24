@@ -191,13 +191,13 @@ function renderTable() {
     tbody.innerHTML = "";
 
     if (!hasSearched) {
-        tbody.innerHTML = "<tr><td colspan='9' style='text-align:center; color: #64748b; padding: 20px;'>Vui lòng nhập điều kiện lọc và bấm nút 'Tìm kiếm' để tải dữ liệu</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; color: #64748b; padding: 20px;'>Vui lòng nhập điều kiện lọc và bấm nút 'Tìm kiếm' để tải dữ liệu</td></tr>";
         updatePaginationControls(0);
         return;
     }
 
     if (!filteredData || filteredData.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='9' style='text-align:center; padding: 20px;'>Không tìm thấy dữ liệu phù hợp với địa bàn của bạn</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; padding: 20px;'>Không tìm thấy dữ liệu phù hợp với địa bàn của bạn</td></tr>";
         updatePaginationControls(0);
         return;
     }
@@ -223,10 +223,13 @@ function renderTable() {
             idsumCountsInPage[item.IDSUM] = (idsumCountsInPage[item.IDSUM] || 0) + 1;
         }
     });
-
+    let idsumRenderedMST = {};
     let idsumRenderedName = {};
     let idsumRenderedCCCD = {};
+    let idsumRenderedThonTo = {};
+    let idsumRenderedPhuongXa = {};
     let idsumRenderedTotal = {};
+    let idsumRenderedStatus = {};
     let idsumRenderedAction = {};
 
     // 4. Sinh các dòng của bảng
@@ -239,7 +242,15 @@ function renderTable() {
             : "<b style='color:#ef4444;'>Chưa thanh toán</b>";
         
         // Cột 1: Mã số thuế
-        tr.innerHTML += "<td>" + (item.MaSoThue || '') + "</td>";
+        //tr.innerHTML += "<td>" + (item.MaSoThue || '') + "</td>";
+        if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
+            if (!idsumRenderedMST[item.IDSUM]) {
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + (item.MaSoThue || '') + "</td>";
+                idsumRenderedMST[item.IDSUM] = true;
+            }
+        } else {
+            tr.innerHTML += "<td>" + (item.MaSoThue || '') + "</td>";
+        }
         
         // Cột 2: Họ và Tên (Gộp ô)
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
@@ -262,8 +273,24 @@ function renderTable() {
         }
 
         // Cột 4, 5, 6: Địa bàn và số tiền lẻ dòng
-        tr.innerHTML += "<td>" + (item.ThonTo || '') + "</td>";
-        tr.innerHTML += "<td>" + (item.PhuongXa || '') + "</td>";
+        //tr.innerHTML += "<td>" + (item.ThonTo || '') + "</td>";
+        if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
+            if (!idsumRenderedThonTo[item.IDSUM]) {
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + (item.ThonTo || '') + "</td>";
+                idsumRenderedThonTo[item.IDSUM] = true;
+            }
+        } else {
+            tr.innerHTML += "<td>" + (item.ThonTo || '') + "</td>";
+        }
+        //tr.innerHTML += "<td>" + (item.PhuongXa || '') + "</td>";
+        if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
+            if (!idsumRenderedPhuongXa[item.IDSUM]) {
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + (item.PhuongXa || '') + "</td>";
+                idsumRenderedPhuongXa[item.IDSUM] = true;
+            }
+        } else {
+            tr.innerHTML += "<td>" + (item.PhuongXa || '') + "</td>";
+        }
         tr.innerHTML += "<td>" + (item.TieuMuc || '') + "</td>";
         tr.innerHTML += "<td>" + (item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0) + " đ</td>";
 
@@ -279,7 +306,15 @@ function renderTable() {
         }
 
         // Cột 8: Trạng thái dòng lẻ
-        tr.innerHTML += "<td>" + statusText + "</td>";
+        //tr.innerHTML += "<td>" + statusText + "</td>";
+        if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
+            if (!idsumRenderedStatus[item.IDSUM]) {
+                tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + statusText + "</td>";
+                idsumRenderedStatus[item.IDSUM] = true;
+            }
+        } else {
+            tr.innerHTML += "<td>" + statusText + "</td>";
+        }
         
         // Cột 9: Hành động gộp chung duy nhất một nút bấm mã QR cho các dòng cùng IDSUM
         const targetIdSum = item.IDSUM || item.ID;
