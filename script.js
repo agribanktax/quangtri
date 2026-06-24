@@ -525,3 +525,61 @@ function removeVietnameseTones(str) {
     str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     return str.trim();
 }
+// Thêm hàm này vào cuối file script.js
+function changePasswordAtLogin() {
+    const userInp = document.getElementById('loginUsername').value.trim();
+    const oldPass = document.getElementById('loginPassword').value.trim();
+    const newPass = document.getElementById('changePassNew').value.trim();
+    const confirmNewPass = document.getElementById('changePassConfirm').value.trim();
+
+    // 1. Kiểm tra dữ liệu đầu vào cơ bản
+    if (!userInp || !oldPass) {
+        alert("Vui lòng điền 'Tên đăng nhập' và 'Mật khẩu hiện tại' ở phía trên trước!");
+        return;
+    }
+
+    if (!newPass || !confirmNewPass) {
+        alert("Vui lòng nhập đầy đủ Mật khẩu mới và Xác nhận mật khẩu mới!");
+        return;
+    }
+
+    if (newPass === oldPass) {
+        alert("Mật khẩu mới không được trùng với mật khẩu cũ đang nhập!");
+        return;
+    }
+
+    if (newPass !== confirmNewPass) {
+        alert("Xác nhận mật khẩu mới không trùng khớp!");
+        return;
+    }
+
+    if (newPass.length < 6) {
+        alert("Mật khẩu mới phải từ 6 ký tự trở lên!");
+        return;
+    }
+
+    // 2. Xác thực tài khoản & mật khẩu cũ trên Firebase
+    db.ref('users/' + userInp).once('value').then((snapshot) => {
+        const userData = snapshot.val();
+        
+        if (userData && userData.password === oldPass) {
+            // Đúng mật khẩu cũ -> Tiến hành cập nhật mật khẩu mới
+            db.ref('users/' + userInp).update({
+                password: newPass
+            }).then(() => {
+                alert("Đổi mật khẩu thành công! Hãy dùng mật khẩu mới để đăng nhập.");
+                // Reset các ô nhập mật khẩu mới
+                document.getElementById('loginPassword').value = "";
+                document.getElementById('changePassNew').value = "";
+                document.getElementById('changePassConfirm').value = "";
+            }).catch(err => {
+                alert("Lỗi khi cập nhật mật khẩu: " + err.message);
+            });
+        } else {
+            alert("Tên đăng nhập hoặc mật khẩu hiện tại không chính xác!");
+        }
+    }).catch(err => {
+        alert("Lỗi kết nối cơ sở dữ liệu: " + err.message);
+    });
+}
+
