@@ -543,7 +543,7 @@ function toggleChangePassMain() {
     } else {
         zone.style.setProperty('display', 'none', 'important');
         zone.classList.add('hidden');
-        btn.innerText = "🔒 Đổi mật khẩu tài khoản";
+        btn.innerText = "Đổi mật khẩu";
         btn.style.backgroundColor = "#4f46e5";
     }
 }
