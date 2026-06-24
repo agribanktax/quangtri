@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đổi Mật Khẩu Cán Bộ</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15px;
+        }
+        .card {
+            max-width: 400px;
+            width: 100%;
+            background: #ffffff;
+            padding: 30px 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(30, 41, 59, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-size: 20px;
+            text-transform: uppercase;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .form-group input:focus {
+            border-color: #4f46e5;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-submit:hover {
+            background: #4338ca;
+        }
+        .btn-back {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+            color: #64748b;
+            font-size: 13px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🔒 Đổi Mật Khẩu</h2>
+    
+    <div class="form-group">
+        <label>👤 Tên đăng nhập (Username):</label>
+        <input type="text" id="txtUsername" placeholder="Nhập tài khoản cán bộ...">
+    </div>
+    
+    <div class="form-group">
+        <label>🔑 Mật khẩu hiện tại:</label>
+        <input type="password" id="txtOldPass" placeholder="Nhập mật khẩu cũ...">
+    </div>
+    
+    <div class="form-group">
+        <label>🆕 Mật khẩu mới:</label>
+        <input type="password" id="txtNewPass" placeholder="Tối thiểu 6 ký tự...">
+    </div>
+    
+    <div class="form-group">
+        <label>🔄 Xác nhận mật khẩu mới:</label>
+        <input type="password" id="txtConfirmPass" placeholder="Nhập lại mật khẩu mới...">
+    </div>
+    
+    <button class="btn-submit" onclick="executeChangePassword()">Xác nhận đổi mật khẩu</button>
+    <a href="index.html" class="btn-back">⬅ Quay lại trang đăng nhập</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+    // Copy chính xác cấu hình Firebase từ file script.js cũ của bạn điền vào đây
+    const firebaseConfig = {
+        apiKey: "AIzaSyAOSKLNPXp-s40iJNYYzdEWDnQDFoa6x_Q",
+        authDomain: "thue2026-f558d.firebaseapp.com",
+        databaseURL: "https://thue2026-f558d-default-rtdb.firebaseio.com",
+        projectId: "thue2026-f558d",
+        storageBucket: "thue2026-f558d.firebasestorage.app",
+        messagingSenderId: "1008017359572",
+        appId: "1:1008017359572:web:f70cf40778e600e8deb141"
+    };
+    
+    // Khởi tạo Firebase độc lập cho trang này
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
+    function executeChangePassword() {
+        const username = document.getElementById('txtUsername').value.trim();
+        const oldPass = document.getElementById('txtOldPass').value.trim();
+        const newPass = document.getElementById('txtNewPass').value.trim();
+        const confirmPass = document.getElementById('txtConfirmPass').value.trim();
+
+        if (!username || !oldPass || !newPass || !confirmPass) {
+            alert("Vui lòng điền đầy đủ thông tin vào tất cả các ô!");
+            return;
+        }
+
+        if (newPass !== confirmPass) {
+            alert("Xác nhận mật khẩu mới không trùng khớp!");
+            return;
+        }
+
+        if (newPass.length < 6) {
+            alert("Mật khẩu mới phải từ 6 ký tự trở lên!");
+            return;
+        }
+
+        // Truy vấn tới nút dữ liệu của user tương ứng
+        db.ref('users/' + username).once('value').then((snapshot) => {
+            const userData = snapshot.val();
+            
+            if (userData) {
+                // SỬA LỖI ĐỒNG BỘ KIỂU DỮ LIỆU: Ép cả 2 về String để so sánh chuẩn xác nhất
+                const dbPasswordStr = String(userData.password);
+                const inputPasswordStr = String(oldPass);
+
+                if (dbPasswordStr === inputPasswordStr) {
+                    // Đúng mật khẩu cũ -> Thực hiện cập nhật chuỗi mật khẩu mới
+                    db.ref('users/' + username).update({
+                        password: newPass
+                    }).then(() => {
+                        alert("Đổi mật khẩu thành công! Hệ thống sẽ chuyển hướng về trang đăng nhập.");
+                        window.location.href = "index.html"; // Chuyển trang tự động
+                    }).catch(err => {
+                        alert("Lỗi cập nhật mật khẩu: " + err.message);
+                    });
+                } else {
+                    alert("Mật khẩu hiện tại không chính xác!");
+                }
+            } else {
+                alert("Tài khoản cán bộ không tồn tại trên hệ thống!");
+            }
+        }).catch(err => {
+            alert("Lỗi kết nối Firebase: " + err.message);
+        });
+    }
+</script>
+</body>
+</html>
