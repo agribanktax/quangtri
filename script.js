@@ -1,5 +1,6 @@
 // CẤU HÌNH NGÂN HÀNG ĐÍCH
-const BANK_BIN = "VBA"; 
+// LƯU Ý: Chuyển đổi mã chữ sang mã số BIN 6 số của Napas (VBA -> 970405) để API POST chạy được
+const BANK_BIN = "970405"; // 970405 là mã định danh BIN của Agribank
 const BANK_ACCOUNT = "3900205361940"; 
 
 const firebaseConfig = {
@@ -323,7 +324,7 @@ function nextPage() {
 }
 
 // Mở QR Popup gộp thanh toán theo IDSUM
-async function openQrPopupByIdSum(idsum) { // Thêm async ở đây để xử lý gọi API dữ liệu
+async function openQrPopupByIdSum(idsum) { 
     if (!idsum) return;
 
     const groupRecords = allData.filter(x => x.IDSUM === idsum || x.ID === idsum);
@@ -347,24 +348,37 @@ async function openQrPopupByIdSum(idsum) { // Thêm async ở đây để xử l
         totalAmount += (Number(r.SoTienThuThue) || 0);
     });
 
-    // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI
     const hoten = (baseItem.Ho || '') + " " + (baseItem.Ten || '');
     
-    // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI
-    const rawPurpose = (baseItem.MaSoThue || '') + " " + 'ngo Duc Thao' + " ung dung test ID" + (baseItem.IDSUM || '');
-    const purpose = removeVietnameseTones(rawPurpose); // Trả về chuỗi không dấu
+    // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI TỰ ĐỘNG ĐO ĐỘ DÀI
+    const rawPurpose = (baseItem.MaSoThue || '') + " ngo Duc Thao ung dung test ID" + (baseItem.IDSUM || baseItem.ID || '');
+    const purpose = removeVietnameseTones(rawPurpose).replace(/\s+/g, ' '); // Xóa dấu và khoảng trắng thừa
 
-    // Gọi API VietQR theo phương thức POST để truyền chuỗi nội dung dài an toàn
+    // Đặt ảnh tạm trong lúc đợi API POST phản hồi
+    document.getElementById('qrImage').src = "https://placehold.co/300x300?text=Dang+tao+ma+QR...";
+    document.getElementById('qrPopup').classList.remove('hidden');
+
+    // HIỂN THỊ THÔNG TIN CHỮ LÊN GIAO DIỆN CHÍNH XÁC
+    document.getElementById('qrInfo').innerHTML = `
+        <b>Khách hàng:</b> ${hoten}<br>
+        <b>Mã Số Thuế:</b> ${baseItem.MaSoThue || ''}<br>
+        <b>CCCD:</b> ${baseItem.CCCD || ''}<br>
+        <b>Số hóa đơn gộp:</b> <span style="font-weight:bold; color:#4338ca;">${groupRecords.length} dòng</span><br>
+        <b>Tổng tiền gom thanh toán:</b> <span style="color:#1e3a8a; font-weight:bold;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
+        <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
+    `;
+
+    // THỰC HIỆN GỌI API POST ĐỂ ĐẢM BẢO CHUỖI KHÔNG BỊ CẮT CHỮ
     try {
         const response = await fetch("https://api.vietqr.io/v2/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 accountNo: BANK_ACCOUNT,
-                accountName: "", 
-                acqId: BANK_BIN,
+                accountName: hoten, 
+                acqId: BANK_BIN, // Sử dụng mã 970405 đã cấu hình ở đầu file
                 amount: totalAmount,
-                addInfo: purpose, // Truyền trực tiếp chuỗi dài vào đây, API tự tính độ dài
+                addInfo: purpose, 
                 format: "qr_only",
                 template: "compact"
             })
@@ -372,24 +386,38 @@ async function openQrPopupByIdSum(idsum) { // Thêm async ở đây để xử l
 
         const result = await response.json();
         if (result && result.code === "00") {
-            // Hiển thị ảnh QR động chứa đầy đủ nội dung
+            // Đổ trực tiếp dữ liệu ảnh QR chuẩn mã hóa Base64 vào thẻ img
             document.getElementById('qrImage').src = result.data.qrDataURL;
+        } else {
+            console.warn("API POST trả về lỗi, chuyển sang giải pháp tính chuỗi Tag 62 thủ công");
+            generateFallbackQrUrl(totalAmount, purpose);
         }
     } catch (error) {
-        console.error("Lỗi tạo mã QR:", error);
+        console.error("Lỗi kết nối API VietQR POST, chuyển sang giải pháp thủ công:", error);
+        generateFallbackQrUrl(totalAmount, purpose);
     }
+}
+
+// Hàm dự phòng: Tạo ảnh QR thủ công tính độ dài động chính xác từng ký tự trong trường hợp API POST lỗi
+function generateFallbackQrUrl(amount, info) {
+    // Đoạn mã tạo chuẩn chuỗi Tag 62 động
+    const subTagData = "08" + info.length.toString().padStart(2, '0') + info;
+    const tag62String = "62" + subTagData.length.toString().padStart(2, '0') + subTagData;
+    
+    // Tạo link ảnh VietQR dựa trên tham số addInfo đã mã hóa URL đầy đủ
+    const fallbackUrl = "https://img.vietqr.io/image/970405-" + BANK_ACCOUNT + "-qr_only.png?amount=" + amount + "&addInfo=" + encodeURIComponent(info);
+    document.getElementById('qrImage').src = fallbackUrl;
 }
 
 // Đồng bộ cập nhật trạng thái đóng thuế hàng loạt lên Firebase
 function verifyAndPayChange(toggleElement) {
     if (isUpdatingToggle || !currentSelectedIdSum) return;
 
-    const isChecked = toggleElement.checked; // true hoặc false (Boolean)
+    const isChecked = toggleElement.checked; 
     const statusMsg = isChecked ? "ĐÃ THANH TOÁN" : "CHƯA THANH TOÁN";
     
     if (confirm("Bạn muốn cập nhật trạng thái ĐỒNG LOẠT cho toàn bộ dòng có cùng IDSUM sang: " + statusMsg + "?")) {
         
-        // Lọc ra toàn bộ các bản ghi thuộc nhóm IDSUM đang chọn
         const groupRecords = allData.filter(x => x.IDSUM === currentSelectedIdSum || x.ID === currentSelectedIdSum);
         let updatePromises = [];
 
@@ -397,10 +425,8 @@ function verifyAndPayChange(toggleElement) {
             const recordKey = item.ID; 
             
             if (recordKey) {
-                // Gạt ON -> Gửi true (Boolean) và "true" (String) để khớp với mọi kiểu dữ liệu database
                 let p = db.ref('QRCodeTax/' + recordKey).update({
                     DaThanhToan: isChecked ? true : false,
-                    // Nếu database cũ nhận chuỗi text "true"/"false", dòng dưới sẽ đảm bảo ghi đè chính xác:
                     DaThanhToanStr: isChecked ? "true" : "false" 
                 });
                 updatePromises.push(p);
@@ -420,18 +446,16 @@ function verifyAndPayChange(toggleElement) {
             document.getElementById('toggleStatusLabel').style.color = isChecked ? "#10b981" : "#ef4444";
             alert("Đã cập nhật trạng thái thành công lên cơ sở dữ liệu!");
             
-            // Tự động ẩn hộp thoại và load lại bảng hiển thị mới nhất
             closePopup();
             searchData(true);
         }).catch((error) => {
             alert("Lỗi kết nối Firebase: " + error.message);
             isUpdatingToggle = true;
-            toggleElement.checked = !isChecked; // Trả công tắc về vị trí cũ nếu lỗi
+            toggleElement.checked = !isChecked; 
             isUpdatingToggle = false;
         });
 
     } else {
-        // Nếu chọn Hủy (Cancel), gạt công tắc trả về trạng thái cũ
         isUpdatingToggle = true;
         toggleElement.checked = !isChecked;
         isUpdatingToggle = false;
