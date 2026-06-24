@@ -291,6 +291,7 @@ function renderTable() {
         } else {
             tr.innerHTML += "<td>" + (item.PhuongXa || '') + "</td>";
         }
+        tr.innerHTML += "<td>" + (item.MaPhiNN || '') + "</td>";
         tr.innerHTML += "<td>" + (item.TieuMuc || '') + "</td>";
         tr.innerHTML += "<td>" + (item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0) + " đ</td>";
 
