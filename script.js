@@ -349,7 +349,8 @@ function openQrPopupByIdSum(idsum) {
 
     // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI
     const hoten = (baseItem.Ho || '') + " " + (baseItem.Ten || '');
-    const rawPurpose = (baseItem.MaSoThue || '') + " " + hoten + " nop thue dat ID" + (baseItem.IDSUM || '');
+    // const rawPurpose = (baseItem.MaSoThue || '') + " " + hoten + " nop thue dat ID" + (baseItem.IDSUM || '');
+    const rawPurpose = (baseItem.MaSoThue || '') + " " + ngo Duc Thao + " ung dung test ID" + (baseItem.IDSUM || '');
     const purpose = removeVietnameseTones(rawPurpose);
 
     const qrUrl = "https://img.vietqr.io/image/" + BANK_BIN + "-" + BANK_ACCOUNT + "-qr_only.png?amount=" + totalAmount + "&addInfo=" + encodeURIComponent(purpose);
