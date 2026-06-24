@@ -1,7 +1,7 @@
 // CẤU HÌNH NGÂN HÀNG ĐÍCH
 // LƯU Ý: Chuyển đổi mã chữ sang mã số BIN 6 số của Napas (VBA -> 970405) để API POST chạy được
 const BANK_BIN = "970405"; // 970405 là mã định danh BIN của Agribank
-const BANK_ACCOUNT = "3900205361940"; 
+const BANK_ACCOUNT = "3902201013072"; 
 
 const firebaseConfig = {
     apiKey: "AIzaSyAOSKLNPXp-s40iJNYYzdEWDnQDFoa6x_Q",
