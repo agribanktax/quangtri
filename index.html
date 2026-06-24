@@ -37,6 +37,12 @@
     </div>
    
     <div class="filter-box">
+         <div class="filter-item">
+            <label>Phường/Xã:</label>
+            <select id="filterPhuongXa" onchange="updateThonToCombobox()">
+                <option value="">-- Tất cả Phường/Xã --</option>
+            </select>
+        </div>
           <div class="filter-item">
             <label>Thôn/Tổ:</label>
             <select id="filterThonTo">
@@ -44,12 +50,7 @@
             </select>
         </div>
         
-        <div class="filter-item">
-            <label>Phường/Xã:</label>
-            <select id="filterPhuongXa" onchange="updateThonToCombobox()">
-                <option value="">-- Tất cả Phường/Xã --</option>
-            </select>
-        </div>
+       
         
         <div class="filter-item">
             <label>Trạng thái:</label>
