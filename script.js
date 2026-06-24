@@ -349,55 +349,34 @@ async function openQrPopupByIdSum(idsum) { // Thêm async ở đây để xử l
 
     // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI
     const hoten = (baseItem.Ho || '') + " " + (baseItem.Ten || '');
+    
+    // CẤU TRÚC NỘI DUNG CHUYỂN KHOẢN MỚI
     const rawPurpose = (baseItem.MaSoThue || '') + " " + 'ngo Duc Thao' + " ung dung test ID" + (baseItem.IDSUM || '');
-    const purpose = removeVietnameseTones(rawPurpose);
+    const purpose = removeVietnameseTones(rawPurpose); // Trả về chuỗi không dấu
 
-    // HIỂN THỊ THÔNG TIN CHỮ LÊN GIAO DIỆN TRƯỚC
-    document.getElementById('qrInfo').innerHTML = `
-        <b>Khách hàng:</b> ${hoten}<br>
-        <b>Mã Số Thuế:</b> ${baseItem.MaSoThue || ''}<br>
-        <b>CCCD:</b> ${baseItem.CCCD || ''}<br>
-        <b>Số hóa đơn gộp:</b> <span style="font-weight:bold; color:#4338ca;">${groupRecords.length} dòng</span><br>
-        <b>Tổng tiền gom thanh toán:</b> <span style="color:#1e3a8a; font-weight:bold;">${totalAmount.toLocaleString('vi-VN')} đ</span><br>
-        <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
-    `;
-
-    // Đặt ảnh tạm thời trong lúc đợi tải QR
-    document.getElementById('qrImage').src = "https://placehold.co/300x300?text=Dang+tao+ma+QR...";
-    document.getElementById('qrPopup').classList.remove('hidden');
-
-    // SỬA ĐỔI: Gọi API VietQR theo phương thức POST để không bị cắt nội dung
+    // Gọi API VietQR theo phương thức POST để truyền chuỗi nội dung dài an toàn
     try {
         const response = await fetch("https://api.vietqr.io/v2/generate", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 accountNo: BANK_ACCOUNT,
-                accountName: "", // Có thể để trống hoặc điền tên chủ tài khoản ngân hàng
+                accountName: "", 
                 acqId: BANK_BIN,
                 amount: totalAmount,
-                addInfo: purpose,
+                addInfo: purpose, // Truyền trực tiếp chuỗi dài vào đây, API tự tính độ dài
                 format: "qr_only",
                 template: "compact"
             })
         });
 
         const result = await response.json();
-        
         if (result && result.code === "00") {
-            // Thay thế ảnh bằng chuỗi Base64 trả về đầy đủ nội dung
+            // Hiển thị ảnh QR động chứa đầy đủ nội dung
             document.getElementById('qrImage').src = result.data.qrDataURL;
-        } else {
-            console.error("Lỗi tạo mã QR từ VietQR API:", result.desc);
-            // Phương án dự phòng (fallback) quay lại link cũ nếu API lỗi
-            document.getElementById('qrImage').src = "https://img.vietqr.io/image/" + BANK_BIN + "-" + BANK_ACCOUNT + "-qr_only.png?amount=" + totalAmount + "&addInfo=" + encodeURIComponent(purpose);
         }
     } catch (error) {
-        console.error("Lỗi kết nối API:", error);
-        // Phương án dự phòng (fallback) khi mất mạng
-        document.getElementById('qrImage').src = "https://img.vietqr.io/image/" + BANK_BIN + "-" + BANK_ACCOUNT + "-qr_only.png?amount=" + totalAmount + "&addInfo=" + encodeURIComponent(purpose);
+        console.error("Lỗi tạo mã QR:", error);
     }
 }
 
