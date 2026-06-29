@@ -92,7 +92,7 @@ function fetchTaxData() {
                 for (let id in data) {
                     let item = data[id];
                     if (!item.ID) item.ID = id; 
-                    
+                    item.id_key = id;
                     if (item.Branch === currentUser.Branch || item.BranchCode === currentUser.Branch) {
                         allData.push(item);
                     }
