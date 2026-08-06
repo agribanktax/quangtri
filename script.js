@@ -1,8 +1,7 @@
 // CẤU HÌNH NGÂN HÀNG ĐÍCH
 // LƯU Ý: Chuyển đổi mã chữ sang mã số BIN 6 số của Napas (VBA -> 970405) để API POST chạy được
 const BANK_BIN = "970405"; // 970405 là mã định danh BIN của Agribank
-const BANK_ACCOUNT = "3902201013072"; 
-//const BANK_ACCOUNT = "3900205361940"; 
+const DEFAULT_BANK_ACCOUNT = "3902201013072"; 
 
 const firebaseConfig = {
     apiKey: "AIzaSyAOSKLNPXp-s40iJNYYzdEWDnQDFoa6x_Q",
@@ -243,7 +242,6 @@ function renderTable() {
             : "<b style='color:#ef4444;'>Chưa thanh toán</b>";
         
         // Cột 1: Mã số thuế
-        //tr.innerHTML += "<td>" + (item.MaSoThue || '') + "</td>";
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedMST[item.IDSUM]) {
                 tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + (item.MaSoThue || '') + "</td>";
@@ -263,7 +261,7 @@ function renderTable() {
             tr.innerHTML += "<td>" + (item.Ho || '') + " " + (item.Ten || '') + "</td>";
         }
 
-        // Cột 3: CCCD (Gộp ô tương tự Họ Tên)
+        // Cột 3: CCCD
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedCCCD[item.IDSUM]) {
                 tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + (item.CCCD || '') + "</td>";
@@ -274,7 +272,6 @@ function renderTable() {
         }
 
         // Cột 4, 5, 6: Địa bàn và số tiền lẻ dòng
-        //tr.innerHTML += "<td>" + (item.ThonTo || '') + "</td>";
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedThonTo[item.IDSUM]) {
                 tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + (item.ThonTo || '') + "</td>";
@@ -283,7 +280,6 @@ function renderTable() {
         } else {
             tr.innerHTML += "<td>" + (item.ThonTo || '') + "</td>";
         }
-        //tr.innerHTML += "<td>" + (item.PhuongXa || '') + "</td>";
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedPhuongXa[item.IDSUM]) {
                 tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + (item.PhuongXa || '') + "</td>";
@@ -296,7 +292,7 @@ function renderTable() {
         tr.innerHTML += "<td>" + (item.TieuMuc || '') + "</td>";
         tr.innerHTML += "<td>" + (item.SoTienThuThue ? Number(item.SoTienThuThue).toLocaleString('vi-VN') : 0) + " đ</td>";
 
-        // Cột 7: Tổng tiền thanh toán nộp gộp (Gộp ô theo IDSUM)
+        // Cột 7: Tổng tiền thanh toán nộp gộp
         const totalGroupAmount = idsumTotals[item.IDSUM] || Number(item.SoTienThuThue) || 0;
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedTotal[item.IDSUM]) {
@@ -308,7 +304,6 @@ function renderTable() {
         }
 
         // Cột 8: Trạng thái dòng lẻ
-        //tr.innerHTML += "<td>" + statusText + "</td>";
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedStatus[item.IDSUM]) {
                 tr.innerHTML += "<td rowspan='" + idsumCountsInPage[item.IDSUM] + "' style='vertical-align: middle; background-color: #ffffff;'>" + statusText + "</td>";
@@ -318,7 +313,7 @@ function renderTable() {
             tr.innerHTML += "<td>" + statusText + "</td>";
         }
         
-        // Cột 9: Hành động gộp chung duy nhất một nút bấm mã QR cho các dòng cùng IDSUM
+        // Cột 9: Hành động gộp chung nút bấm quét QR
         const targetIdSum = item.IDSUM || item.ID;
         if (item.IDSUM && idsumCountsInPage[item.IDSUM] > 1) {
             if (!idsumRenderedAction[item.IDSUM]) {
@@ -371,6 +366,16 @@ async function openQrPopupByIdSum(idsum) {
     const baseItem = groupRecords[0];
     currentSelectedIdSum = idsum; 
 
+    // Kiểm tra BranchCode để chọn đúng số tài khoản nhận tiền
+    let targetBankAccount = DEFAULT_BANK_ACCOUNT;
+    const currentBranchCode = String(baseItem.BranchCode || baseItem.Branch || '').trim();
+
+    if (currentBranchCode === "3902") {
+        targetBankAccount = "3902201013072";
+    } else if (currentBranchCode === "3904") {
+        targetBankAccount = "3904201006432";
+    }
+
     // Đồng bộ kiểm tra trạng thái gạt: Chỉ bật ON khi tất cả các dòng đều đã đóng
     const isAllPaid = groupRecords.every(item => item.DaThanhToan === true || item.DaThanhToan === "true" || item.DaThanhToan === 1);
 
@@ -406,13 +411,13 @@ async function openQrPopupByIdSum(idsum) {
         <b>Nội dung chuyển khoản:</b> <span style="color:#c2410c; font-weight:bold;">${purpose}</span>
     `;
 
-    // THỰC HIỆN GỌI API POST ĐỂ ĐẢM BẢO CHUỖI KHÔNG BỊ CẮT CHỮ
+    // THỰC HIỆN GỌI API POST VỚI TÀI KHOẢN ĐÃ ĐƯỢC CẤP TƯƠNG ỨNG VỚI BRANCHCODE
     try {
         const response = await fetch("https://api.vietqr.io/v2/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                accountNo: BANK_ACCOUNT,
+                accountNo: targetBankAccount,
                 accountName: hoten, 
                 acqId: BANK_BIN, // Sử dụng mã 970405 đã cấu hình ở đầu file
                 amount: totalAmount,
@@ -428,22 +433,17 @@ async function openQrPopupByIdSum(idsum) {
             document.getElementById('qrImage').src = result.data.qrDataURL;
         } else {
             console.warn("API POST trả về lỗi, chuyển sang giải pháp tính chuỗi Tag 62 thủ công");
-            generateFallbackQrUrl(totalAmount, purpose);
+            generateFallbackQrUrl(targetBankAccount, totalAmount, purpose);
         }
     } catch (error) {
         console.error("Lỗi kết nối API VietQR POST, chuyển sang giải pháp thủ công:", error);
-        generateFallbackQrUrl(totalAmount, purpose);
+        generateFallbackQrUrl(targetBankAccount, totalAmount, purpose);
     }
 }
 
 // Hàm dự phòng: Tạo ảnh QR thủ công tính độ dài động chính xác từng ký tự trong trường hợp API POST lỗi
-function generateFallbackQrUrl(amount, info) {
-    // Đoạn mã tạo chuẩn chuỗi Tag 62 động
-    const subTagData = "08" + info.length.toString().padStart(2, '0') + info;
-    const tag62String = "62" + subTagData.length.toString().padStart(2, '0') + subTagData;
-    
-    // Tạo link ảnh VietQR dựa trên tham số addInfo đã mã hóa URL đầy đủ
-    const fallbackUrl = "https://img.vietqr.io/image/970405-" + BANK_ACCOUNT + "-qr_only.png?amount=" + amount + "&addInfo=" + encodeURIComponent(info);
+function generateFallbackQrUrl(accountNo, amount, info) {
+    const fallbackUrl = "https://img.vietqr.io/image/970405-" + accountNo + "-qr_only.png?amount=" + amount + "&addInfo=" + encodeURIComponent(info);
     document.getElementById('qrImage').src = fallbackUrl;
 }
 
@@ -526,26 +526,19 @@ function removeVietnameseTones(str) {
     return str.trim();
 }
 
-// Thay thế hoặc thêm hàm này vào cuối file script.js của trang chính (index.html)
 function goToChangePassPage() {
-    // Kiểm tra xem hệ thống đã có thông tin currentUser chưa
     if (currentUser && currentUser.username) {
-        
-        // Bước 1: Truy vấn Firebase một lần nữa để lấy chính xác id_key dựa vào username hiện tại
         db.ref('users').orderByChild('username').equalTo(currentUser.username).once('value').then((snapshot) => {
             if (snapshot.exists()) {
                 let idKey = null;
                 
                 snapshot.forEach((childSnapshot) => {
-                    idKey = childSnapshot.key; // Lấy chính xác id_key (ví dụ: "canbo01", "user_123"...)
+                    idKey = childSnapshot.key;
                 });
 
                 if (idKey) {
-                    // Bước 2: Lưu cả username và id_key vào sessionStorage
                     sessionStorage.setItem('changePassUsername', currentUser.username);
                     sessionStorage.setItem('changePassIdKey', idKey);
-                    
-                    // Bước 3: Chuyển hướng sang trang đổi mật khẩu độc lập
                     window.location.href = "changepass.html";
                 } else {
                     alert("Không thể xác định mã định danh (id_key) của tài khoản!");
@@ -556,7 +549,6 @@ function goToChangePassPage() {
         }).catch(err => {
             alert("Lỗi kết nối hệ thống: " + err.message);
         });
-        
     } else {
         alert("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại!");
     }
