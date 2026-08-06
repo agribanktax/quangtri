@@ -454,7 +454,7 @@ function verifyAndPayChange(toggleElement) {
     const isChecked = toggleElement.checked; 
     const statusMsg = isChecked ? "ĐÃ THANH TOÁN" : "CHƯA THANH TOÁN";
     
-    if (confirm("Bạn muốn cập nhật trạng thái ĐỒNG LOẠT cho toàn bộ dòng có cùng IDSUM sang: " + statusMsg + "?")) {
+    if (confirm("Bạn muốn cập nhật trạng thái " + statusMsg + "?")) {
         
         const groupRecords = allData.filter(x => x.IDSUM === currentSelectedIdSum || x.ID === currentSelectedIdSum);
         let updatePromises = [];
