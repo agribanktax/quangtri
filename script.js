@@ -448,6 +448,7 @@ function generateFallbackQrUrl(accountNo, amount, info) {
 }
 
 // Đồng bộ cập nhật trạng thái đóng thuế hàng loạt lên Firebase
+// Đồng bộ cập nhật trạng thái đóng thuế hàng loạt lên Firebase
 function verifyAndPayChange(toggleElement) {
     if (isUpdatingToggle || !currentSelectedIdSum) return;
 
@@ -463,9 +464,9 @@ function verifyAndPayChange(toggleElement) {
             const recordKey = item.ID; 
             
             if (recordKey) {
+                // Chỉ cập nhật duy nhất trường DaThanhToan dạng Boolean (true/false)
                 let p = db.ref('QRCodeTax/' + recordKey).update({
-                    DaThanhToan: isChecked ? true : false,
-                    DaThanhToanStr: isChecked ? "true" : "false" 
+                    DaThanhToan: isChecked ? true : false
                 });
                 updatePromises.push(p);
             }
